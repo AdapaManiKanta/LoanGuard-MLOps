@@ -1,8 +1,3 @@
-# ==========================================
-# LoanGuard - Full Backend (Production Ready)
-# Flask + ML + Supabase PostgreSQL
-# ==========================================
-
 from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
@@ -13,32 +8,16 @@ from dotenv import load_dotenv
 from datetime import datetime
 from flask_cors import CORS
 
-# ==========================================
-# Load Environment Variables
-# ==========================================
-
+# Load environment variables
 load_dotenv()
 
-# ==========================================
-# Initialize Flask App
-# ==========================================
-
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React
+CORS(app)
 
-# ==========================================
-# Load ML Model & Preprocessing Objects
-# ==========================================
-
+# Load ML model
 model = joblib.load("models/loan_model.pkl")
 scaler = joblib.load("models/scaler.pkl")
 label_encoders = joblib.load("models/label_encoders.pkl")
-
-print("Model Loaded Successfully")
-
-# ==========================================
-# Database Connection
-# ==========================================
 
 def get_connection():
     return psycopg2.connect(
@@ -49,10 +28,6 @@ def get_connection():
         port=os.getenv("DB_PORT")
     )
 
-# ==========================================
-# Risk Classification
-# ==========================================
-
 def classify_risk(prob):
     if prob < 0.3:
         return "Low Risk"
@@ -61,17 +36,9 @@ def classify_risk(prob):
     else:
         return "High Risk"
 
-# ==========================================
-# Home Route
-# ==========================================
-
 @app.route("/")
 def home():
-    return jsonify({"message": "Loan Risk API Running Successfully"})
-
-# ==========================================
-# Predict Route
-# ==========================================
+    return jsonify({"message": "Loan Risk API Running"})
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -79,7 +46,7 @@ def predict():
         data = request.json
 
         if not data:
-            return jsonify({"error": "No input data provided"}), 400
+            return jsonify({"error": "No input provided"}), 400
 
         df = pd.DataFrame([data])
 
@@ -88,10 +55,8 @@ def predict():
             if col in label_encoders:
                 df[col] = label_encoders[col].transform(df[col])
 
-        # Scale features
         df_scaled = scaler.transform(df)
 
-        # Predict
         prediction = model.predict(df_scaled)[0]
         probability = model.predict_proba(df_scaled)[0][1]
         risk_level = classify_risk(probability)
@@ -113,11 +78,11 @@ def predict():
             data.get("Dependents"),
             data.get("Education"),
             data.get("Self_Employed"),
-            data.get("ApplicantIncome"),
-            data.get("CoapplicantIncome"),
-            data.get("LoanAmount"),
-            data.get("Loan_Amount_Term"),
-            data.get("Credit_History"),
+            int(data.get("ApplicantIncome")),
+            int(data.get("CoapplicantIncome")),
+            int(data.get("LoanAmount")),
+            int(data.get("Loan_Amount_Term")),
+            int(data.get("Credit_History")),
             data.get("Property_Area"),
             int(prediction),
             float(probability),
@@ -139,63 +104,40 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 
-# ==========================================
-# Get All Applications
-# ==========================================
-
 @app.route("/applications", methods=["GET"])
 def get_applications():
-    try:
-        conn = get_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("SELECT * FROM applications ORDER BY id DESC")
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)
 
-        cursor.execute("SELECT * FROM applications ORDER BY id DESC")
-        rows = cursor.fetchall()
-
-        cursor.close()
-        conn.close()
-
-        return jsonify(rows)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ==========================================
-# Statistics Route
-# ==========================================
 
 @app.route("/stats", methods=["GET"])
 def stats():
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
+    conn = get_connection()
+    cursor = conn.cursor()
 
-        cursor.execute("SELECT COUNT(*) FROM applications")
-        total = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM applications")
+    total = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM applications WHERE prediction = 1")
-        approved = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM applications WHERE prediction = 1")
+    approved = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM applications WHERE prediction = 0")
-        rejected = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) FROM applications WHERE prediction = 0")
+    rejected = cursor.fetchone()[0]
 
-        cursor.close()
-        conn.close()
+    cursor.close()
+    conn.close()
 
-        return jsonify({
-            "total_applications": total,
-            "approved": approved,
-            "rejected": rejected
-        })
+    return jsonify({
+        "total_applications": total,
+        "approved": approved,
+        "rejected": rejected
+    })
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ==========================================
-# Run App
-# ==========================================
 
 if __name__ == "__main__":
     app.run(debug=True)

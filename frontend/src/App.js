@@ -2,15 +2,17 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 function App() {
+  const API_BASE = "http://127.0.0.1:5000";
+
   const [formData, setFormData] = useState({
     Gender: "Male",
     Married: "Yes",
     Dependents: "0",
     Education: "Graduate",
     Self_Employed: "No",
-    ApplicantIncome: "",
-    CoapplicantIncome: "",
-    LoanAmount: "",
+    ApplicantIncome: 5000,
+    CoapplicantIncome: 0,
+    LoanAmount: 120,
     Loan_Amount_Term: 360,
     Credit_History: 1,
     Property_Area: "Urban",
@@ -20,12 +22,20 @@ function App() {
   const [applications, setApplications] = useState([]);
   const [stats, setStats] = useState(null);
 
-  const API_BASE = "http://127.0.0.1:5000";
+  const numericFields = [
+    "ApplicantIncome",
+    "CoapplicantIncome",
+    "LoanAmount",
+    "Loan_Amount_Term",
+    "Credit_History"
+  ];
 
   const handleChange = (e) => {
+    const { name, value } = e.target;
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: numericFields.includes(name) ? Number(value) : value
     });
   };
 
@@ -36,7 +46,7 @@ function App() {
       fetchApplications();
       fetchStats();
     } catch (error) {
-      alert("Error: " + error.response?.data?.error);
+      alert(error.response?.data?.error || "Server error");
     }
   };
 
@@ -56,19 +66,20 @@ function App() {
   }, []);
 
   return (
-    <div style={{ padding: "40px", fontFamily: "Arial" }}>
+    <div style={{ padding: 40 }}>
       <h1>Loan Risk Management Dashboard</h1>
 
       <h2>Loan Application Form</h2>
 
       {Object.keys(formData).map((key) => (
-        <div key={key} style={{ marginBottom: "10px" }}>
+        <div key={key} style={{ marginBottom: 10 }}>
           <label>{key}</label>
           <input
+            type={numericFields.includes(key) ? "number" : "text"}
             name={key}
             value={formData[key]}
             onChange={handleChange}
-            style={{ marginLeft: "10px" }}
+            style={{ marginLeft: 10 }}
           />
         </div>
       ))}
@@ -76,7 +87,7 @@ function App() {
       <button onClick={handleSubmit}>Submit Application</button>
 
       {result && (
-        <div style={{ marginTop: "20px" }}>
+        <div style={{ marginTop: 20 }}>
           <h3>Prediction Result</h3>
           <p>Prediction: {result.prediction}</p>
           <p>Probability: {result.probability}</p>
@@ -125,4 +136,3 @@ function App() {
 }
 
 export default App;
-
