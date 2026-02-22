@@ -16,6 +16,11 @@ export default function AdminPanel({ token }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // Retrain state
+    const [retraining, setRetraining] = useState(false);
+    const [retrainResult, setRetrainResult] = useState(null);
+    const [retrainError, setRetrainError] = useState(null);
+
     const headers = { Authorization: `Bearer ${token}` };
 
     useEffect(() => {
@@ -44,6 +49,20 @@ export default function AdminPanel({ token }) {
         }
     };
 
+    const handleRetrain = async () => {
+        setRetraining(true);
+        setRetrainResult(null);
+        setRetrainError(null);
+        try {
+            const res = await axios.post(`${API_BASE}/admin/retrain`, {}, { headers });
+            setRetrainResult(res.data);
+        } catch (e) {
+            setRetrainError(e.response?.data?.error || "Retrain request failed");
+        } finally {
+            setRetraining(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -57,13 +76,14 @@ export default function AdminPanel({ token }) {
                 {[
                     { id: "users", label: "👥 Users & Roles" },
                     { id: "audit", label: "🗒️ Audit Log" },
+                    { id: "retrain", label: "🔁 Retrain Model" },
                 ].map((t) => (
                     <button
                         key={t.id}
                         onClick={() => setTab(t.id)}
                         className={`px-5 py-3 text-sm font-bold rounded-t-xl transition-all -mb-px border ${tab === t.id
-                                ? "bg-white border-gray-200 border-b-white text-indigo-700 shadow-sm"
-                                : "border-transparent text-gray-400 hover:text-gray-600"
+                            ? "bg-white border-gray-200 border-b-white text-indigo-700 shadow-sm"
+                            : "border-transparent text-gray-400 hover:text-gray-600"
                             }`}
                     >
                         {t.label}
@@ -154,10 +174,10 @@ export default function AdminPanel({ token }) {
                                             <td className="px-6 py-3 text-gray-400 text-xs font-mono">#{log.id}</td>
                                             <td className="px-6 py-3">
                                                 <span className={`text-xs font-bold px-2 py-1 rounded-full ${log.event_type === "LOGIN"
-                                                        ? "bg-blue-100 text-blue-700"
-                                                        : log.event_type === "PREDICT"
-                                                            ? "bg-green-100 text-green-700"
-                                                            : "bg-gray-100 text-gray-700"
+                                                    ? "bg-blue-100 text-blue-700"
+                                                    : log.event_type === "PREDICT"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-gray-100 text-gray-700"
                                                     }`}>
                                                     {log.event_type}
                                                 </span>
@@ -175,6 +195,61 @@ export default function AdminPanel({ token }) {
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+                </div>
+            )}
+            {/* Retrain Model tab */}
+            {tab === "retrain" && (
+                <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100 space-y-6">
+                    <div>
+                        <h3 className="font-bold text-gray-700 mb-1">🔁 Model Retraining</h3>
+                        <p className="text-sm text-gray-400">Triggers a full retrain of the ML model using the current dataset. Takes ~5–10 seconds. The new model is saved and immediately used for predictions.</p>
+                    </div>
+
+                    <button
+                        onClick={handleRetrain}
+                        disabled={retraining}
+                        className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black px-8 py-3 rounded-xl hover:from-indigo-500 hover:to-blue-500 transition-all disabled:opacity-50 uppercase tracking-widest text-sm"
+                    >
+                        {retraining ? (
+                            <span className="flex items-center gap-2">
+                                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                                </svg>
+                                Retraining...
+                            </span>
+                        ) : "Retrain Now"}
+                    </button>
+
+                    {retrainError && (
+                        <div className="bg-red-50 border border-red-200 rounded-xl px-6 py-4 text-red-600 text-sm">
+                            ❌ {retrainError}
+                        </div>
+                    )}
+
+                    {retrainResult && (
+                        <div className={`rounded-xl border px-6 py-5 space-y-4 ${retrainResult.success ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+                            <p className={`font-bold text-lg ${retrainResult.success ? "text-green-700" : "text-red-600"}`}>
+                                {retrainResult.success ? "✅ Retraining Successful" : "❌ Retraining Failed"}
+                            </p>
+                            {retrainResult.accuracy != null && (
+                                <div className="flex gap-8">
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Accuracy</p>
+                                        <p className="text-2xl font-black text-indigo-700">{(retrainResult.accuracy * 100).toFixed(2)}%</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">F1 Score</p>
+                                        <p className="text-2xl font-black text-indigo-700">{(retrainResult.f1 * 100).toFixed(2)}%</p>
+                                    </div>
+                                </div>
+                            )}
+                            <details className="mt-2">
+                                <summary className="text-xs font-bold text-gray-400 cursor-pointer hover:text-gray-600">View output log</summary>
+                                <pre className="mt-2 text-xs bg-gray-100 rounded-lg p-4 overflow-auto max-h-48 text-gray-600 whitespace-pre-wrap">{retrainResult.output}</pre>
+                            </details>
                         </div>
                     )}
                 </div>

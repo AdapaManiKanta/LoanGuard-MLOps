@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 const API_BASE = "http://127.0.0.1:5000";
 
 const defaultForm = {
+    ApplicantName: "",
     Gender: "Male", Married: "Yes", Dependents: "0",
     Education: "Graduate", Self_Employed: "No",
     ApplicantIncome: 5000, CoapplicantIncome: 0,
@@ -86,8 +87,20 @@ function EligibilityChecker() {
                     <div className="lg:col-span-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8">
                         <h2 className="text-lg font-bold mb-6 text-indigo-200">Your Details</h2>
                         <form onSubmit={handleSubmit}>
+                            {/* Applicant Name — always first, full width */}
+                            <div className="mb-5">
+                                <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1.5 block">Full Name</label>
+                                <input
+                                    type="text"
+                                    name="ApplicantName"
+                                    value={form.ApplicantName}
+                                    onChange={handleChange}
+                                    placeholder="e.g. Priya Sharma"
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                {Object.keys(defaultForm).map((key) => (
+                                {Object.keys(defaultForm).filter(k => k !== 'ApplicantName').map((key) => (
                                     <div key={key} className="flex flex-col">
                                         <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-1.5">
                                             {key === 'ApplicantIncome' ? 'Monthly Income (₹)'

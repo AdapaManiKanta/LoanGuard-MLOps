@@ -11,3 +11,6 @@ flasgger
 shap
 pydantic
 PyJWT
+bcrypt
+reportlab
+requests

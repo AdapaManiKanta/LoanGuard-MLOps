@@ -40,6 +40,7 @@ def token_required(f):
 
 # --- Input Validation Schema ---
 class LoanApplication(BaseModel):
+    ApplicantName: str = Field("", description="Full name of the applicant")
     Gender: Literal["Male", "Female"]
     Married: Literal["Yes", "No"]
     Dependents: Literal["0", "1", "2", "3+"]
@@ -136,6 +137,7 @@ def check_eligibility():
             return jsonify({"error": "Validation failed", "details": errors}), 422
 
         data = app_input.model_dump()
+        applicant_name = data.pop("ApplicantName", "")
         # Accept real ₹ LoanAmount; divide by 1000 for ML model (trained on ₹ thousands)
         real_loan_amount = data["LoanAmount"]
         data["LoanAmount"] = real_loan_amount / 1000
@@ -228,6 +230,7 @@ def predict():
             return jsonify({"error": "Validation failed", "details": errors}), 422
 
         data = app_input.model_dump()
+        applicant_name = data.pop("ApplicantName", "")
         input_data_for_db = data.copy()
         # Convert real ₹ LoanAmount → thousands for the ML model (trained in ₹ thousands)
         real_loan_amount = data["LoanAmount"]
@@ -266,12 +269,13 @@ def predict():
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO applications (
-                gender, married, dependents, education, self_employed,
+                applicant_name, gender, married, dependents, education, self_employed,
                 applicant_income, coapplicant_income, loan_amount,
                 loan_term, credit_history, property_area,
                 prediction, probability, risk_level, created_at
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """, (
+            applicant_name,
             input_data_for_db.get("Gender"),
             input_data_for_db.get("Married"),
             input_data_for_db.get("Dependents"),
@@ -391,6 +395,8 @@ def stats():
 # --- RBAC, Monitoring, Audit routes ---
 from auth import token_required as _tr, role_required, get_admin_users, get_me, get_connection as _ac_conn
 from monitoring import get_drift_status
+import subprocess
+import sys
 
 def _audit_log(event_type, username, details):
     """Append-only audit log insert."""
@@ -435,6 +441,89 @@ def audit_log_view():
         cursor.close()
         conn.close()
         return jsonify(rows)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/retrain", methods=["POST"])
+@role_required("ADMIN")
+def retrain_model():
+    """Trigger model retraining — ADMIN only.
+    ---
+    responses:
+      200:
+        description: Retraining result with accuracy and F1
+    """
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), "train_model.py")
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True, text=True, timeout=120,
+            cwd=os.path.dirname(__file__)
+        )
+        output = result.stdout + result.stderr
+        # Parse accuracy and F1 from the last print line
+        accuracy, f1 = None, None
+        for line in output.splitlines():
+            if "Accuracy:" in line and "F1:" in line:
+                try:
+                    parts = line.split(",")
+                    accuracy = float(parts[0].split(":")[1].strip())
+                    f1 = float(parts[1].split(":")[1].strip())
+                except Exception:
+                    pass
+        success = result.returncode == 0
+        _audit_log("RETRAIN", request.current_user, {"success": success, "accuracy": accuracy, "f1": f1})
+        return jsonify({"success": success, "accuracy": accuracy, "f1": f1, "output": output})
+    except subprocess.TimeoutExpired:
+        return jsonify({"error": "Retraining timed out after 120s"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/applications/<int:app_id>/status", methods=["PATCH"])
+@role_required("MANAGER", "ADMIN")
+def update_application_status(app_id):
+    """Update application status — MANAGER or ADMIN only.
+    ---
+    parameters:
+      - name: app_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "Under Review"
+    responses:
+      200:
+        description: Status updated
+    """
+    valid_statuses = {"Pending", "Under Review", "Approved", "Rejected"}
+    body = request.json or {}
+    new_status = body.get("status", "")
+    if new_status not in valid_statuses:
+        return jsonify({"error": f"Invalid status. Must be one of: {', '.join(valid_statuses)}"}), 400
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE applications SET status = %s WHERE id = %s",
+            (new_status, app_id)
+        )
+        if cursor.rowcount == 0:
+            cursor.close(); conn.close()
+            return jsonify({"error": "Application not found"}), 404
+        conn.commit()
+        cursor.close()
+        conn.close()
+        _audit_log("STATUS_UPDATE", request.current_user, {"app_id": app_id, "new_status": new_status})
+        return jsonify({"success": True, "id": app_id, "status": new_status})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
