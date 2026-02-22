@@ -25,64 +25,59 @@ function Login({ onLogin }) {
     };
 
     return (
-        <div className="min-h-screen mesh-bg flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Decorative blobs */}
-            <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl animate-blob pointer-events-none" />
-            <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl animate-blob delay-400 pointer-events-none" />
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Decorative circles */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-100 rounded-full -translate-y-1/2 translate-x-1/2 opacity-50 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-200/30 rounded-full translate-y-1/2 -translate-x-1/2 opacity-50 pointer-events-none" />
 
             <div className="w-full max-w-md relative animate-scale-in">
                 {/* Back link */}
-                <Link to="/" className="flex items-center gap-2 text-white/30 hover:text-white/70 text-sm font-medium transition-colors mb-8">
+                <Link to="/" className="flex items-center gap-2 text-blue-500 hover:text-blue-700 text-sm font-semibold transition-colors mb-8">
                     ← Back to Home
                 </Link>
 
                 {/* Logo */}
                 <div className="text-center mb-10">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600/30 to-blue-600/20 border border-indigo-500/30 rounded-2xl mb-5 animate-pulse-glow">
-                        <svg className="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-700 to-blue-500 rounded-2xl mb-5 shadow-xl shadow-blue-200 animate-pulse-ring">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
-                    <h1 className="text-4xl font-black text-white tracking-tight">LoanGuard</h1>
-                    <p className="text-indigo-300/60 text-sm mt-2 font-medium">MLOps Dashboard — Secure Access</p>
+                    <h1 className="text-4xl font-black text-blue-900 tracking-tight">LoanGuard</h1>
+                    <p className="text-slate-500 text-sm mt-2 font-medium">MLOps Dashboard — Secure Access</p>
                 </div>
 
                 {/* Card */}
-                <div className="glass-strong rounded-3xl p-8 shadow-2xl card-shine">
-                    <h2 className="text-2xl font-black text-white mb-2">Sign In</h2>
-                    <p className="text-white/30 text-sm mb-8">Enter your credentials to access the dashboard</p>
+                <div className="bg-white rounded-3xl p-8 shadow-2xl shadow-blue-100 border border-blue-100">
+                    <h2 className="text-2xl font-black text-blue-900 mb-1">Sign In</h2>
+                    <p className="text-slate-400 text-sm mb-8">Enter your credentials to access the dashboard</p>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="animate-fade-in-up delay-100">
-                            <label className="text-xs font-bold text-indigo-300/70 uppercase tracking-widest block mb-2">Username</label>
+                            <label className="text-xs font-bold text-blue-700 uppercase tracking-widest block mb-2">Username</label>
                             <input
-                                id="username"
-                                type="text"
+                                id="username" type="text"
                                 value={creds.username}
                                 onChange={(e) => setCreds({ ...creds, username: e.target.value })}
-                                placeholder="admin"
+                                placeholder="e.g. admin"
                                 required
-                                className="input-glow w-full glass border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-white/20 focus:outline-none transition-all text-sm font-medium"
+                                className="input-glow w-full rounded-xl px-4 py-3.5 text-sm font-medium"
                             />
                         </div>
                         <div className="animate-fade-in-up delay-200">
-                            <label className="text-xs font-bold text-indigo-300/70 uppercase tracking-widest block mb-2">Password</label>
+                            <label className="text-xs font-bold text-blue-700 uppercase tracking-widest block mb-2">Password</label>
                             <input
-                                id="password"
-                                type="password"
+                                id="password" type="password"
                                 value={creds.password}
                                 onChange={(e) => setCreds({ ...creds, password: e.target.value })}
                                 placeholder="••••••••"
                                 required
-                                className="input-glow w-full glass border border-white/10 rounded-xl px-4 py-3.5 text-white placeholder-white/20 focus:outline-none transition-all text-sm font-medium"
+                                className="input-glow w-full rounded-xl px-4 py-3.5 text-sm font-medium"
                             />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="btn-glow animate-fade-in-up delay-300 w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-black py-4 rounded-xl uppercase tracking-widest mt-2 disabled:opacity-40 flex items-center justify-center gap-2"
-                        >
+                        <button type="submit" disabled={loading}
+                            className="btn-glow animate-fade-in-up delay-300 w-full bg-gradient-to-r from-blue-700 to-blue-500 text-white font-black py-4 rounded-xl uppercase tracking-widest mt-2 disabled:opacity-40 flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
                             {loading ? (
                                 <>
                                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -96,13 +91,13 @@ function Login({ onLogin }) {
                     </form>
 
                     {/* Role hints */}
-                    <div className="mt-8 pt-6 border-t border-white/5">
-                        <p className="text-white/20 text-[10px] text-center uppercase tracking-widest mb-3">Demo Accounts</p>
+                    <div className="mt-8 pt-6 border-t border-blue-50">
+                        <p className="text-slate-300 text-[10px] text-center uppercase tracking-widest mb-3">Demo Accounts</p>
                         <div className="grid grid-cols-3 gap-2 text-center">
                             {[
-                                { role: "ADMIN", cred: "admin / password", color: "text-red-400 bg-red-500/10 border-red-500/20" },
-                                { role: "MANAGER", cred: "manager / manager123", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-                                { role: "OFFICER", cred: "officer / officer123", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
+                                { role: "ADMIN", cred: "admin / password", color: "text-red-600 bg-red-50 border-red-100" },
+                                { role: "MANAGER", cred: "manager / manager123", color: "text-blue-600 bg-blue-50 border-blue-100" },
+                                { role: "OFFICER", cred: "officer / officer123", color: "text-emerald-600 bg-emerald-50 border-emerald-100" },
                             ].map(r => (
                                 <div key={r.role} className={`rounded-xl px-2 py-2 border text-[9px] font-bold ${r.color}`}>
                                     <div className="mb-0.5">{r.role}</div>
@@ -113,9 +108,9 @@ function Login({ onLogin }) {
                     </div>
                 </div>
 
-                <p className="text-white/20 text-center text-xs mt-6">
+                <p className="text-slate-400 text-center text-xs mt-6">
                     Looking to check eligibility?{" "}
-                    <Link to="/check" className="text-indigo-400 hover:text-indigo-300 transition-colors font-semibold">
+                    <Link to="/check" className="text-blue-600 hover:text-blue-800 transition-colors font-semibold">
                         No login required →
                     </Link>
                 </p>
