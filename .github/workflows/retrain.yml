@@ -1,0 +1,54 @@
+name: Automated Model Retraining
+
+on:
+  # Trigger on push to main if loan_data.csv changes
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend_py/data/loan_data.csv'
+  # Also allow manual trigger from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  retrain:
+    name: Retrain Loan Risk Model
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('backend_py/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        working-directory: backend_py
+        run: pip install -r requirements.txt
+
+      - name: Run training script
+        working-directory: backend_py
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: python train_model.py
+
+      - name: Upload model artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trained-models-${{ github.sha }}
+          path: |
+            backend_py/models/loan_model.pkl
+            backend_py/models/scaler.pkl
+            backend_py/models/label_encoders.pkl
+            backend_py/models/shap_explainer.pkl
+          retention-days: 30

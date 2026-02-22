@@ -1,7 +1,13 @@
 flask
+flask-cors
 pandas
 numpy
 scikit-learn
 joblib
 psycopg2-binary
 python-dotenv
+mlflow
+flasgger
+shap
+pydantic
+PyJWT
