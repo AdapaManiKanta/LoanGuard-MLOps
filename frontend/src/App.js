@@ -46,6 +46,7 @@ function Dashboard({ token, onLogout }) {
     LoanAmount: 120000, Loan_Amount_Term: 360,
     Credit_History: 1, Property_Area: "Urban",
   });
+  const [errors, setErrors] = useState({});
 
   const [result, setResult] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -73,7 +74,16 @@ function Dashboard({ token, onLogout }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: numericFields.includes(name) ? Number(value) : value });
+    const numVal = numericFields.includes(name) ? Number(value) : value;
+    setFormData(prev => ({ ...prev, [name]: numVal }));
+
+    // Real-time validation
+    let err = "";
+    if (name === "ApplicantName" && !value.trim()) err = "Name is required.";
+    else if (name === "ApplicantIncome" && numVal <= 0) err = "Must be > 0.";
+    else if (name === "LoanAmount" && numVal <= 0) err = "Must be > 0.";
+    else if (name === "Loan_Amount_Term" && (numVal < 12 || numVal > 360)) err = "Input 12 to 360 months.";
+    setErrors(prev => ({ ...prev, [name]: err }));
   };
 
   const handleSubmit = async () => {
@@ -217,12 +227,19 @@ function Dashboard({ token, onLogout }) {
                         </select>
                       ) : (
                         <input type="number" name={key} value={formData[key]} onChange={handleChange}
-                          className="input-glow rounded-xl px-3 py-2.5 text-sm" />
+                          className={`input-glow rounded-xl px-3 py-2.5 text-sm ${errors[key] ? 'border-red-400 focus:ring-red-400 bg-red-50' : ''}`} />
                       )}
+                      {/* Validation Error Message */}
+                      <div className="h-4 mt-1">
+                        {errors[key] && <p className="text-[10px] font-bold text-red-500 animate-fade-in">{errors[key]}</p>}
+                        {key === 'ApplicantName' && !errors[key] && (
+                          <p className="text-[10px] font-bold text-slate-400 text-right">{formData.ApplicantName.length}/50</p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
-                <button onClick={handleSubmit} disabled={loading}
+                <button onClick={handleSubmit} disabled={loading || Object.values(errors).some(e => e)}
                   className="btn-glow mt-8 w-full bg-gradient-to-r from-blue-700 to-blue-500 text-white font-black py-4 rounded-xl disabled:opacity-40 uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-blue-200">
                   {loading ? (<><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>Analyzing...</>) : "⚡ Predict Loan Risk"}
                 </button>
@@ -414,6 +431,59 @@ function App() {
   const [token, setToken] = useState(getValidToken);
   const handleLogin = (t) => setToken(t);
   const handleLogout = () => { localStorage.removeItem("lg_token"); setToken(null); };
+
+  // Global Axios Interceptor for JWT Refresh
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retry && token) {
+          originalRequest._retry = true;
+          try {
+            const res = await axios.post(`${API_BASE}/refresh`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const newToken = res.data.token;
+            localStorage.setItem("lg_token", newToken);
+            setToken(newToken);
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return axios(originalRequest);
+          } catch (refreshError) {
+            handleLogout();
+            return Promise.reject(refreshError);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+    return () => axios.interceptors.response.eject(interceptor);
+  }, [token]);
+
+  // Silent Background Token Refresh (5 minutes before expiry)
+  useEffect(() => {
+    if (!token) return;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const timeToExpiry = (payload.exp * 1000) - Date.now();
+      const refreshTime = timeToExpiry - (5 * 60 * 1000); // 5 mins before 
+
+      if (refreshTime > 0) {
+        const timer = setTimeout(async () => {
+          try {
+            const res = await axios.post(`${API_BASE}/refresh`, {}, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const newToken = res.data.token;
+            localStorage.setItem("lg_token", newToken);
+            setToken(newToken);
+            console.log("Token refreshed in background");
+          } catch (e) { handleLogout(); }
+        }, refreshTime);
+        return () => clearTimeout(timer);
+      }
+    } catch (e) { }
+  }, [token]);
 
   return (
     <>

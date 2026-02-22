@@ -82,7 +82,63 @@ def get_risk_distribution():
         SELECT risk_level, COUNT(*) as count
         FROM applications
         GROUP BY risk_level
-    """)  
+    """)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+def get_loan_amount_distribution():
+    """Get loan amount distribution in buckets
+    ---
+    responses:
+      200:
+        description: Count of applications per loan amount bucket
+    """
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("""
+        SELECT
+            CASE
+                WHEN loan_amount * 1000 < 100000  THEN '<1L'
+                WHEN loan_amount * 1000 < 200000  THEN '1-2L'
+                WHEN loan_amount * 1000 < 500000  THEN '2-5L'
+                ELSE '5L+'
+            END as bucket,
+            COUNT(*) FILTER (WHERE prediction = 1) as approved,
+            COUNT(*) FILTER (WHERE prediction = 0) as rejected,
+            COUNT(*) as total
+        FROM applications
+        GROUP BY bucket
+        ORDER BY MIN(loan_amount)
+    """)
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+def get_property_area_stats():
+    """Get approval rate by property area
+    ---
+    responses:
+      200:
+        description: Approval/rejection count grouped by property area
+    """
+    conn = get_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    cursor.execute("""
+        SELECT
+            property_area as area,
+            COUNT(*) FILTER (WHERE prediction = 1) as approved,
+            COUNT(*) FILTER (WHERE prediction = 0) as rejected,
+            COUNT(*) as total,
+            ROUND(COUNT(*) FILTER (WHERE prediction = 1) * 100.0 / NULLIF(COUNT(*), 0), 1) as approval_rate
+        FROM applications
+        GROUP BY property_area
+        ORDER BY property_area
+    """)
     rows = cursor.fetchall()
     cursor.close()
     conn.close()

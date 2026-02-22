@@ -527,9 +527,69 @@ def update_application_status(app_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── JWT Refresh ──────────────────────────────────────────────────────────────
+@app.route("/refresh", methods=["POST"])
+def refresh_token():
+    """Refresh a valid JWT token
+    ---
+    responses:
+      200:
+        description: New token
+      401:
+        description: Token invalid or expired
+    """
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    if not token:
+        return jsonify({"error": "Token missing"}), 401
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        new_token = jwt.encode(
+            {"sub": payload["sub"], "role": payload["role"],
+             "exp": datetime.utcnow() + timedelta(hours=1)},
+            JWT_SECRET, algorithm="HS256"
+        )
+        return jsonify({"token": new_token})
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token expired — please log in again"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Invalid token"}), 401
+
+# ── Admin Model Info ──────────────────────────────────────────────────────────
+@app.route("/admin/model-info", methods=["GET"])
+@token_required
+def get_model_info():
+    """Get current ML model metadata
+    ---
+    responses:
+      200:
+        description: Model version, training date, accuracy
+    """
+    import glob
+    try:
+        meta_files = glob.glob("models/model_meta.json")
+        if meta_files:
+            import json
+            with open(meta_files[0]) as f:
+                meta = json.load(f)
+            return jsonify(meta)
+        # Fallback: read model file modification time
+        mtime = os.path.getmtime("models/loan_model.pkl")
+        from datetime import datetime as dt
+        return jsonify({
+            "version": "1.0",
+            "trained_at": dt.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M"),
+            "accuracy": None,
+            "note": "Run retrain to get full metadata"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # Register modular routes
 from routes.batch import batch_predict
-from routes.analytics import get_trends, get_income_bracket, get_risk_distribution
+from routes.analytics import (
+    get_trends, get_income_bracket, get_risk_distribution,
+    get_loan_amount_distribution, get_property_area_stats
+)
 from routes.reports import generate_report
 
 app.config["classify_risk"] = classify_risk
@@ -538,6 +598,8 @@ app.add_url_rule("/batch-predict", "batch_predict", token_required(batch_predict
 app.add_url_rule("/analytics/trends", "analytics_trends", token_required(get_trends), methods=["GET"])
 app.add_url_rule("/analytics/income-bracket", "analytics_income", token_required(get_income_bracket), methods=["GET"])
 app.add_url_rule("/analytics/risk", "analytics_risk", token_required(get_risk_distribution), methods=["GET"])
+app.add_url_rule("/analytics/loan-distribution", "analytics_loan", token_required(get_loan_amount_distribution), methods=["GET"])
+app.add_url_rule("/analytics/property-area", "analytics_area", token_required(get_property_area_stats), methods=["GET"])
 app.add_url_rule("/report/<int:app_id>", "report", token_required(generate_report), methods=["GET"])
 
 if __name__ == "__main__":
