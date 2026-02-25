@@ -82,43 +82,59 @@ export default function Home() {
             </nav>
 
             {/* ── Hero ── */}
-            <section className="hero-bg relative pt-32 pb-28 px-6 overflow-hidden">
-                {/* Subtle white blobs */}
-                <div className="absolute top-16 left-1/4 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-blob pointer-events-none" />
-                <div className="absolute bottom-8 right-1/4 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl animate-blob delay-400 pointer-events-none" />
+            <section className="relative w-screen h-screen flex flex-col items-center justify-center overflow-hidden">
+                {/* Video Background */}
+                <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="absolute inset-0 w-full h-full object-cover z-0"
+                >
+                    <source src="/loanguardbg.mp4" type="video/mp4" />
+                    Your browser does not support the video tag.
+                </video>
 
-                <div className="max-w-5xl mx-auto text-center relative">
+                {/* Dark Overlay for text readability */}
+                <div className="absolute inset-0 bg-slate-900/75 z-0 pointer-events-none mix-blend-multiply" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-slate-900/40 z-0 pointer-events-none" />
+
+                {/* Subtle white blobs */}
+                <div className="absolute top-16 left-1/4 w-80 h-80 bg-white/5 rounded-full blur-3xl animate-blob pointer-events-none z-0" />
+                <div className="absolute bottom-8 right-1/4 w-64 h-64 bg-blue-300/10 rounded-full blur-3xl animate-blob delay-400 pointer-events-none z-0" />
+
+                <div className="max-w-5xl mx-auto px-6 text-center relative z-10 w-full mt-16">
                     {/* Badge */}
-                    <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2 mb-8 animate-fade-in">
-                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                        <span className="text-xs font-bold text-blue-100 uppercase tracking-widest">Live · Powered by ML · Free to use</span>
+                    <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2 mb-8 animate-fade-in backdrop-blur-sm shadow-xl">
+                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                        <span className="text-xs font-bold text-white uppercase tracking-widest text-shadow-sm">Live · Powered by ML · Free to use</span>
                     </div>
 
-                    <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-tight mb-6 text-white animate-fade-in-up">
+                    <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-tight mb-6 text-white animate-fade-in-up" style={{ textShadow: "0 4px 24px rgba(0,0,0,0.4)" }}>
                         Know Your Loan
                         <br />
                         <span className="text-blue-200">Eligibility Instantly</span>
                     </h1>
 
-                    <p className="text-lg sm:text-xl text-blue-100/80 max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up delay-200">
+                    <p className="text-lg sm:text-lg md:text-xl text-white max-w-2xl mx-auto mb-10 leading-relaxed animate-fade-in-up delay-200 font-medium" style={{ textShadow: "0 2px 12px rgba(0,0,0,0.5)" }}>
                         Free AI-powered loan assessment. Get your result in seconds — no bank visit, no paperwork, no login required.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up delay-300">
                         <Link to="/check"
-                            className="btn-glow group bg-white text-blue-700 font-black px-10 py-4 rounded-2xl text-lg shadow-xl flex items-center justify-center gap-3 hover:shadow-2xl">
+                            className="btn-glow group bg-white text-blue-700 font-black px-10 py-4 rounded-2xl text-lg shadow-xl flex items-center justify-center gap-3 hover:shadow-2xl hover:scale-[1.02] transition-all">
                             <span>🔍 Check My Eligibility</span>
                             <span className="group-hover:translate-x-1 transition-transform">→</span>
                         </Link>
                         <Link to="/login"
-                            className="bg-blue-800/40 hover:bg-blue-800/60 border border-white/20 text-white font-bold px-10 py-4 rounded-2xl text-lg transition-all flex items-center justify-center gap-2">
+                            className="bg-blue-800/40 hover:bg-blue-800/60 backdrop-blur-md border border-white/30 text-white font-bold px-10 py-4 rounded-2xl text-lg transition-all flex items-center justify-center gap-2 hover:scale-[1.02]">
                             🏦 Bank Officer Login
                         </Link>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-6 mt-12 animate-fade-in-up delay-400">
                         {["No Login Required", "Result in 2 seconds", "Free Forever", "100% Anonymous"].map(b => (
-                            <div key={b} className="flex items-center gap-1.5 text-blue-100/70 text-xs font-semibold">
+                            <div key={b} className="flex items-center gap-1.5 text-blue-100/90 text-xs font-semibold drop-shadow">
                                 <span className="text-emerald-400">✓</span>{b}
                             </div>
                         ))}

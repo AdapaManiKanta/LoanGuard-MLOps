@@ -1,0 +1,158 @@
+# LoanGuard — AWS Deployment Plan
+
+This document outlines the architecture and step-by-step process for deploying the LoanGuard MLOps platform to Amazon Web Services (AWS) for production use.
+
+## Proposed Architecture
+
+We recommend a **hybrid deployment** to maximize the AWS Free Tier:
+1.  **Frontend (React)**: Hosted on **AWS S3** and served globally via **AWS CloudFront** (CDN). The first 1TB/month of CloudFront data transfer is permanently free.
+2.  **Backend (Flask)**: Hosted on a dedicated **AWS EC2 instance** running **Nginx** and **Gunicorn**. To stay within the **12-Months Free Tier**, use a `t2.micro` or `t3.micro` instance (depending on your region). These come with 1GB of RAM, which is tight but sufficient for serving the RandomForest model if we limit the Gunicorn workers.
+3.  **Database (PostgreSQL)**: You can continue using **Supabase** (permanently free tier) to handle the database layer, pointing your EC2 backend to it via [.env](file:///C:/ManiKanta/coding/LoanGuard-MLOps/backend_py/.env).
+
+---
+
+## Step-by-Step Implementation
+
+### Phase 1: AWS Infrastructure Provisioning
+
+1.  **EC2 Instance (Backend Server):**
+    *   Launch an Ubuntu 22.04 LTS instance. **Select `t2.micro` or `t3.micro` (must show "Free tier eligible").**
+    *   Allocate up to 30 GB of EBS gp3 storage (also free tier included).
+    *   Create a Security Group allowing inbound traffic on limits: **SSH (22)**, **HTTP (80)**, and **HTTPS (443)**.
+    *   Allocate an **Elastic IP** and associate it with the instance so the IP address does not change upon reboot.
+2.  **S3 Bucket (Frontend Hosting):**
+    *   Create a new S3 bucket (e.g., `loanguard-frontend-prod`).
+    *   Disable "Block all public access" to allow website hosting.
+    *   Enable "Static website hosting" in the bucket properties.
+3.  **CloudFront Distribution:**
+    *   Create a CloudFront distribution pointing to the S3 bucket origin.
+    *   Configure it to redirect HTTP to HTTPS.
+
+---
+
+### Phase 2: Backend Deployment (EC2)
+
+We will set up the EC2 instance to run the Flask application securely using a production-grade web server (Gunicorn) behind a reverse proxy (Nginx).
+
+#### 1. Server Setup
+SSH into the EC2 instance and install dependencies:
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3-pip python3-venv nginx -y
+```
+
+#### 2. Application Setup
+Clone the repository and install Python packages:
+```bash
+git clone <your-repo-url> /home/ubuntu/LoanGuard-MLOps
+cd /home/ubuntu/LoanGuard-MLOps/backend_py
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+#### 3. Environment Variables
+Create the production [.env](file:///C:/ManiKanta/coding/LoanGuard-MLOps/backend_py/.env) file:
+```bash
+nano .env
+```
+Populate it with your production Supabase credentials, Resend API key, and a strong `JWT_SECRET`.
+
+#### 4. Gunicorn Service
+Create a systemd service file to keep the backend running automatically:
+```ini
+# /etc/systemd/system/loanguard.service
+[Unit]
+Description=Gunicorn instance to serve LoanGuard Flask App
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/LoanGuard-MLOps/backend_py
+Environment="PATH=/home/ubuntu/LoanGuard-MLOps/backend_py/venv/bin"
+EnvironmentFile=/home/ubuntu/LoanGuard-MLOps/backend_py/.env
+# Note: For free-tier 1GB RAM instances, keep workers to 1 or 2 to avoid Out-Of-Memory (OOM) errors from ML models.
+ExecStart=/home/ubuntu/LoanGuard-MLOps/backend_py/venv/bin/gunicorn --workers 2 --bind unix:loanguard.sock -m 007 app:app
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start the service:
+```bash
+sudo systemctl start loanguard
+sudo systemctl enable loanguard
+```
+
+#### 5. Nginx Configuration
+Configure Nginx to route external HTTP requests to Gunicorn:
+```nginx
+# /etc/nginx/sites-available/loanguard
+server {
+    listen 80;
+    server_name YOUR_EC2_PUBLIC_IP_OR_DOMAIN;
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/home/ubuntu/LoanGuard-MLOps/backend_py/loanguard.sock;
+    }
+}
+```
+Enable the site and restart Nginx:
+```bash
+sudo ln -s /etc/nginx/sites-available/loanguard /etc/nginx/sites-enabled
+sudo systemctl restart nginx
+```
+
+---
+
+### Phase 3: Frontend Deployment (S3)
+
+Before building the frontend, we must configure it to point to the new production backend.
+
+#### 1. Update API Base URL
+In the frontend code (e.g., [App.js](file:///C:/ManiKanta/coding/LoanGuard-MLOps/frontend/src/App.js), [EligibilityChecker.js](file:///C:/ManiKanta/coding/LoanGuard-MLOps/frontend/src/pages/EligibilityChecker.js), [AdminPanel.js](file:///C:/ManiKanta/coding/LoanGuard-MLOps/frontend/src/pages/AdminPanel.js)), change the `API_BASE` constant:
+```javascript
+// Change from localhost to the EC2 Elastic IP or domain name
+const API_BASE = "http://<YOUR_EC2_ELASTIC_IP>";
+```
+*Note: Once you set up an SSL certificate on EC2, this must be changed to `https://`.*
+
+#### 2. Build and Deploy
+Run the React build command locally:
+```bash
+cd frontend
+npm run build
+```
+
+Upload the resulting `build/` folder to your S3 bucket using the AWS Console or the AWS CLI:
+```bash
+aws s3 sync build/ s3://loanguard-frontend-prod
+```
+
+#### 3. CORS Configuration
+Ensure your Flask backend's `CORS(app)` configuration in [app.py](file:///C:/ManiKanta/coding/LoanGuard-MLOps/backend_py/app.py) is updated to accept origins from your new CloudFront URL.
+
+---
+
+## Verification Plan
+
+### Automated
+- Check Gunicorn status on EC2: `sudo systemctl status loanguard`
+- Check Nginx status: `sudo systemctl status nginx`
+- Verify AWS CloudFront distribution status is "Deployed".
+
+### Manual Verification
+1.  **Frontend**: Visit the CloudFront URL in an incognito browser. Verify the login page loads correctly.
+2.  **API Communication**: Submit an eligibility check. Verify the request succeeds (checks EC2 CORS policy).
+3.  **PDF Reports**: Generate a PDF report to ensure `reportlab` functions correctly in the Ubuntu environment.
+4.  **Model Retraining**: Trigger a manual "Retrain Model" from the Admin Panel. Verify that the EC2 instance has enough memory (RAM) to handle the RandomForest training pipeline without crashing.
+
+---
+
+## Optional: Custom Domain & SSL
+To make the site highly professional (e.g., `app.loanguard.com`):
+1.  Register a domain with **AWS Route53**.
+2.  Use **AWS Certificate Manager (ACM)** to provision a free SSL certificate for CloudFront (Frontend).
+3.  Use **Certbot (Let's Encrypt)** on the EC2 instance to provision a free SSL certificate for Nginx (Backend).

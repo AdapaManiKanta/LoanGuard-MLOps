@@ -65,7 +65,7 @@ def generate_report(app_id):
 
         # ── Styles ──────────────────────────────────────────────────────────
         brand_style   = ParagraphStyle("brand",   fontSize=24, fontName="Helvetica-Bold",
-                                       spaceAfter=2,  textColor=ROYAL_BLUE)
+                                       leading=28, spaceAfter=4,  textColor=ROYAL_BLUE)
         tagline_style = ParagraphStyle("tagline", fontSize=10, textColor=SLATE_500, spaceAfter=18)
         section_style = ParagraphStyle("section", fontSize=12, fontName="Helvetica-Bold",
                                        spaceBefore=14, spaceAfter=6, textColor=colors.HexColor("#1E293B"))
@@ -135,9 +135,9 @@ def generate_report(app_id):
                     ["Dependents",          str(app.get("dependents", "—"))],
                     ["Education",           app.get("education", "—")],
                     ["Self Employed",       app.get("self_employed", "—")],
-                    ["Applicant Income",    f"\u20b9{int(app.get('applicant_income', 0)):,}/mo"],
-                    ["Co-applicant Income", f"\u20b9{int(app.get('coapplicant_income', 0)):,}/mo"],
-                    ["Loan Amount",         f"\u20b9{int(app.get('loan_amount', 0)) * 1000:,}"],
+                    ["Applicant Income",    f"Rs. {int(app.get('applicant_income', 0)):,}/mo"],
+                    ["Co-applicant Income", f"Rs. {int(app.get('coapplicant_income', 0)):,}/mo"],
+                    ["Loan Amount",         f"Rs. {int(app.get('loan_amount', 0)) * 1000:,}"],
                     ["Loan Term",           f"{app.get('loan_amount_term', '—')} months"],
                     ["Credit History",      "Yes" if app.get("credit_history") == 1 else "No"],
                     ["Property Area",       app.get("property_area", "—")],
