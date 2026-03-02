@@ -602,5 +602,9 @@ app.add_url_rule("/analytics/loan-distribution", "analytics_loan", token_require
 app.add_url_rule("/analytics/property-area", "analytics_area", token_required(get_property_area_stats), methods=["GET"])
 app.add_url_rule("/report/<int:app_id>", "report", token_required(generate_report), methods=["GET"])
 
+# ── Gemini Chat ──────────────────────────────────────────────────────────────
+from routes.chat import chat_bp
+app.register_blueprint(chat_bp, url_prefix="/api")
+
 if __name__ == "__main__":
     app.run(debug=True)

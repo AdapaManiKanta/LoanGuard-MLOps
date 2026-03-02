@@ -1,0 +1,4 @@
+<svg width="200" height="120" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="120" fill="#e2e8f0"/>
+  <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#2d3748" font-size="12">About Image</text>
+</svg>

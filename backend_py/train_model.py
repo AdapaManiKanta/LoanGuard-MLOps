@@ -1,12 +1,14 @@
 import pandas as pd
 import joblib
 import os
+import json
 import mlflow
 import mlflow.sklearn
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score
+from datetime import datetime
 
 # Set experiment name
 mlflow.set_experiment("Loan_Risk_Prediction")
@@ -25,7 +27,7 @@ for col in data.select_dtypes(include="object").columns:
 for col in data.select_dtypes(include="number").columns:
     data[col] = data[col].fillna(data[col].median())
 
-data["Loan_Status"] = data["Loan_Status"].map({"Y":1,"N":0})
+data["Loan_Status"] = data["Loan_Status"].map({"Y": 1, "N": 0})
 
 label_encoders = {}
 for col in data.select_dtypes(include="object").columns:
@@ -64,11 +66,22 @@ with mlflow.start_run():
 
     # Log model to MLflow
     mlflow.sklearn.log_model(model, "loan_risk_model")
-    
+
     # SHAP Explainability
     import shap
     explainer = shap.LinearExplainer(model, X_train)
     joblib.dump(explainer, "models/shap_explainer.pkl")
-    
+
+    # Save model metadata for Admin Panel UI (read by /admin/model-info)
+    meta = {
+        "version": datetime.now().strftime("%Y%m%d.%H%M"),
+        "trained_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "accuracy": round(float(acc), 4),
+        "f1": round(float(f1), 4),
+    }
+    with open("models/model_meta.json", "w") as mf:
+        json.dump(meta, mf)
+
+    # Output format must match app.py parser: "Accuracy: X.XXXX, F1: Y.YYYY"
     print(f"Model Trained. Accuracy: {acc:.4f}, F1: {f1:.4f}")
     print("Logged to MLflow successfully. SHAP Explainer saved.")
