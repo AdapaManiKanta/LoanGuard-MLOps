@@ -98,7 +98,13 @@ export default function Home() {
       <section
         id="hero"
         className="relative"
-        style={{ width: "100vw", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}
+        style={{
+          width: "100vw",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         <br />
         <br />
@@ -107,10 +113,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto relative z-10 text-center px-6">
           <div className="animate-fade-in-up">
             <h1 className="text-5xl md:text-7xl font-black leading-[1.1] mb-6 tracking-tight">
-              Intelligent Risk Assessment
+              Loan Risk Management
               <br />
               for Finance
             </h1>
+
             <p className="text-lg text-slate-300 mb-12 max-w-2xl mx-auto font-medium">
               AI-powered loan assessment platform combining cutting-edge machine
               learning with secure infrastructure for financial institutions.
