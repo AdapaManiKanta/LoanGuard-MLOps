@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import LoanChatBot from "../components/LoanChatBot";
 
+/* ── animated counter hook ── */
 function useCounter(target, duration = 2000) {
   const [count, setCount] = useState(0);
   const ref = useRef(null);
@@ -26,7 +27,7 @@ function useCounter(target, duration = 2000) {
             observer.disconnect();
           }
         },
-        { threshold: 0.3 },
+        { threshold: 0.3 }
       );
       if (ref.current) observer.observe(ref.current);
       return () => observer.disconnect();
@@ -37,619 +38,462 @@ function useCounter(target, duration = 2000) {
   return [count, ref];
 }
 
-export default function Home() {
+/* ── FAQ accordion item ── */
+function FaqItem({ q, a }) {
+  const [open, setOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-slate-900 font-sans text-white overflow-x-hidden">
+    <div
+      onClick={() => setOpen(!open)}
+      style={{
+        background: "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(12px)",
+        border: "1px solid rgba(255,255,255,0.7)",
+        borderRadius: 14,
+        padding: "16px 22px",
+        cursor: "pointer",
+        transition: "box-shadow 0.2s",
+        boxShadow: open ? "0 4px 24px rgba(130,100,220,0.13)" : "none",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span style={{ fontWeight: 600, color: "#3d2e7c", fontSize: 15 }}>{q}</span>
+        <span style={{ color: "#7c66d5", fontWeight: 700, fontSize: 18, transition: "transform 0.2s", transform: open ? "rotate(90deg)" : "none" }}>›</span>
+      </div>
+      {open && (
+        <p style={{ marginTop: 10, color: "#5a4a9a", fontSize: 14, lineHeight: 1.6 }}>{a}</p>
+      )}
+    </div>
+  );
+}
+
+/* ── wave SVG background ── */
+const BgWaves = () => (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 0,
+      background: "linear-gradient(135deg, #434343ff 0%, #595858ff 35%, #b8c8fa 60%, #e8d0ff 100%)",
+      overflow: "hidden",
+      pointerEvents: "none",
+    }}
+  >
+    {/* Animated wave blobs */}
+    <div style={{
+      position: "absolute", top: "-10%", left: "-10%", width: "70%", height: "70%",
+      background: "radial-gradient(ellipse at 40% 40%, rgba(180,160,255,0.55) 0%, transparent 70%)",
+      animation: "blobDrift1 9s ease-in-out infinite alternate",
+    }} />
+    <div style={{
+      position: "absolute", bottom: "0%", right: "-10%", width: "65%", height: "65%",
+      background: "radial-gradient(ellipse at 60% 60%, rgba(160,200,255,0.45) 0%, transparent 70%)",
+      animation: "blobDrift2 11s ease-in-out infinite alternate",
+    }} />
+    <div style={{
+      position: "absolute", top: "40%", left: "20%", width: "55%", height: "55%",
+      background: "radial-gradient(ellipse at 50% 50%, rgba(220,200,255,0.35) 0%, transparent 70%)",
+      animation: "blobDrift3 13s ease-in-out infinite alternate",
+    }} />
+    {/* sparkles */}
+    {[...Array(14)].map((_, i) => (
+      <div key={i} style={{
+        position: "absolute",
+        width: i % 3 === 0 ? 6 : 4,
+        height: i % 3 === 0 ? 6 : 4,
+        borderRadius: "50%",
+        background: i % 2 === 0 ? "rgba(255,210,120,0.75)" : "rgba(200,180,255,0.7)",
+        top: `${10 + (i * 6.2) % 80}%`,
+        left: `${5 + (i * 7.3) % 90}%`,
+        animation: `sparkle ${2.5 + (i % 5) * 0.6}s ease-in-out infinite alternate`,
+        animationDelay: `${(i * 0.37) % 2}s`,
+      }} />
+    ))}
+    <style>{`
+      @keyframes blobDrift1 { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(5%,8%) scale(1.08);} }
+      @keyframes blobDrift2 { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(-6%,-5%) scale(1.1);} }
+      @keyframes blobDrift3 { 0%{transform:translate(0,0) scale(1);} 100%{transform:translate(4%,-7%) scale(1.06);} }
+      @keyframes sparkle { 0%{opacity:0.3;transform:scale(0.8);} 100%{opacity:1;transform:scale(1.3);} }
+      @keyframes fadeUp { from{opacity:0;transform:translateY(30px);} to{opacity:1;transform:translateY(0);} }
+      .fade-up { animation: fadeUp 0.7s ease both; }
+    `}</style>
+  </div>
+);
+
+/* ── glass card helper ── */
+const GlassCard = ({ children, style = {}, hover = true }) => (
+  <div
+    style={{
+      background: "rgba(255,255,255,0.52)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      border: "1px solid rgba(255,255,255,0.75)",
+      borderRadius: 18,
+      padding: 28,
+      transition: "box-shadow 0.25s, transform 0.25s",
+      ...style,
+    }}
+    onMouseEnter={e => {
+      if (hover) {
+        e.currentTarget.style.boxShadow = "0 8px 36px rgba(120,100,220,0.18)";
+        e.currentTarget.style.transform = "translateY(-3px)";
+      }
+    }}
+    onMouseLeave={e => {
+      if (hover) {
+        e.currentTarget.style.boxShadow = "";
+        e.currentTarget.style.transform = "";
+      }
+    }}
+  >
+    {children}
+  </div>
+);
+
+export default function Home() {
+  const [navScrolled, setNavScrolled] = useState(false);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+
+  useEffect(() => {
+    const onScroll = () => setNavScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const headingColor = "#2d1f6e";
+  const subColor = "#5a4a9a";
+  const mutedColor = "#7a6faa";
+
+  return (
+    <div style={{ minHeight: "100vh", fontFamily: "'Inter', 'Segoe UI', sans-serif", overflowX: "hidden", position: "relative" }}>
+      <BgWaves />
+
       {/* ── Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-800">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          {/* logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded flex items-center justify-center font-bold text-white shadow-sm text-xs">
-              LG
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        background: navScrolled ? "rgba(230,225,255,0.82)" : "rgba(230,225,255,0.65)",
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        borderBottom: "1px solid rgba(180,160,255,0.3)",
+        transition: "background 0.3s",
+      }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center",
+              background: "linear-gradient(135deg, #7c66d5, #4f8ef7)", boxShadow: "0 2px 12px rgba(124,102,213,0.4)",
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
             </div>
-            <span className="font-bold text-lg tracking-tight">LoanGuard</span>
+            <span style={{ fontWeight: 800, fontSize: 18, color: headingColor, letterSpacing: "-0.5px" }}>LoanGuard <span style={{ color: "#7c66d5" }}>Ai</span></span>
           </div>
-          {/* primary links */}
-          <div className="hidden md:flex items-center gap-8">
-            <a
-              href="#services"
-              className="text-sm font-medium text-slate-300 hover:text-white transition"
-            >
-              Services
-            </a>
-            <a
-              href="#work"
-              className="text-sm font-medium text-slate-300 hover:text-white transition"
-            >
-              Our Work
-            </a>
-            <a
-              href="#about"
-              className="text-sm font-medium text-slate-300 hover:text-white transition"
-            >
-              About
-            </a>
-            <a
-              href="#contact"
-              className="text-sm font-medium text-slate-300 hover:text-white transition"
-            >
-              Contact
-            </a>
+
+          {/* Nav links */}
+          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+            {[["Home", "#hero"], ["Features", "#services"], ["Testimonials", "#testimonials"], ["FAQ", "#faq"]].map(([label, href]) => (
+              <a key={label} href={href} style={{ fontSize: 14, fontWeight: 600, color: subColor, textDecoration: "none", transition: "color 0.2s" }}
+                onMouseEnter={e => e.target.style.color = headingColor}
+                onMouseLeave={e => e.target.style.color = subColor}
+              >{label}</a>
+            ))}
           </div>
-          {/* call to action in nav for desktop */}
-          <div className="flex items-center gap-4">
-            <Link
-              to="/check"
-              className="hidden lg:inline-block px-6 py-2 text-sm bg-blue-600 hover:bg-blue-700 rounded font-medium transition"
-            >
-              Check Eligibility
-            </Link>
-            <Link
-              to="/login"
-              className="hidden lg:inline-block px-6 py-2 text-sm border border-slate-600 hover:border-slate-400 rounded font-medium transition"
-            >
-              Officer Login
-            </Link>
-          </div>
+
+          {/* CTA */}
+          <Link to="/check" style={{
+            padding: "10px 24px", background: "linear-gradient(135deg, #7c66d5, #4f8ef7)",
+            color: "white", borderRadius: 30, fontWeight: 700, fontSize: 14,
+            textDecoration: "none", boxShadow: "0 4px 16px rgba(124,102,213,0.35)",
+            transition: "box-shadow 0.2s, transform 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(124,102,213,0.5)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(124,102,213,0.35)"; e.currentTarget.style.transform = ""; }}
+          >
+            Get Started
+          </Link>
         </div>
       </nav>
-      {/* ── Hero Section ── */}
-      <section
-        id="hero"
-        className="relative"
-        style={{
-          width: "100vw",
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <br />
-        <br />
-        <br />
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-transparent z-0 pointer-events-none"></div>
-        <div className="max-w-7xl mx-auto relative z-10 text-center px-6">
-          <div className="animate-fade-in-up">
-            <h1 className="text-5xl md:text-7xl font-black leading-[1.1] mb-6 tracking-tight">
-              Loan Risk Management
-              <br />
-              for Finance
+
+      {/* ── Hero ── */}
+      <section id="hero" style={{ position: "relative", zIndex: 1, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 80 }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "60px 32px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center" }}>
+          {/* Left */}
+          <div className="fade-up">
+            <h1 style={{ fontSize: "clamp(2.4rem, 4vw, 3.8rem)", fontWeight: 900, color: headingColor, lineHeight: 1.1, marginBottom: 18, letterSpacing: "-1px" }}>
+              Automate Loan Risk <span style={{ color: "#7c66d5" }}>with AI</span>
             </h1>
-
-            <p className="text-lg text-slate-300 mb-12 max-w-2xl mx-auto font-medium">
-              AI-powered loan assessment platform combining cutting-edge machine
-              learning with secure infrastructure for financial institutions.
+            <p style={{ fontSize: 17, color: subColor, marginBottom: 36, lineHeight: 1.7 }}>
+              Empower your bank to make smarter, safer lending decisions with cutting‑edge machine learning and instant risk scoring.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link
-                to="/check"
-                className="px-8 py-3.5 text-base bg-blue-600 hover:bg-blue-700 rounded font-medium shadow-lg transition"
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              <a href="https://www.youtube.com/results?search_query=loan+risk+AI" target="_blank" rel="noopener noreferrer"
+                style={{
+                  padding: "13px 30px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(8px)",
+                  border: "1.5px solid rgba(124,102,213,0.4)", borderRadius: 30, color: headingColor,
+                  fontWeight: 700, fontSize: 15, textDecoration: "none", transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(124,102,213,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.7)"; e.currentTarget.style.boxShadow = ""; }}
+              >▶ Watch Video</a>
+              <Link to="/check" style={{
+                padding: "13px 30px", background: "linear-gradient(135deg, #7c66d5, #4f8ef7)",
+                color: "white", borderRadius: 30, fontWeight: 700, fontSize: 15,
+                textDecoration: "none", boxShadow: "0 4px 18px rgba(124,102,213,0.38)",
+                transition: "all 0.2s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 28px rgba(124,102,213,0.55)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 18px rgba(124,102,213,0.38)"; e.currentTarget.style.transform = ""; }}
+              >Get Started</Link>
+            </div>
+          </div>
+
+          {/* Right – video card (place your video at frontend/public/demo.mp4) */}
+          <div className="fade-up" style={{ animationDelay: "0.15s" }}>
+            <GlassCard hover={false} style={{ padding: 0, overflow: "hidden", borderRadius: 22, boxShadow: "0 12px 50px rgba(120,100,220,0.18)" }}>
+              <video
+                autoPlay
+                loop
+                muted
+                controls
+                style={{ width: "100%", display: "block", borderRadius: 22 }}
+                poster=""
               >
-                Check Eligibility
-              </Link>
-              <Link
-                to="/login"
-                className="px-8 py-3.5 text-base border border-slate-500 hover:border-slate-300 rounded font-medium transition group"
-              >
-                Officer Login{" "}
-                <span className="ml-2 group-hover:translate-x-1 transition-transform inline-block">
-                  →
-                </span>
-              </Link>
-            </div>
+                <source src="/demo.mp4" type="video/mp4" />
+                {/* Fallback when video is not placed yet */}
+                <div style={{
+                  aspectRatio: "16/9", background: "linear-gradient(135deg, #3b2fa0 0%, #1e3a8a 50%, #0f2261 100%)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 15 }}>Place demo.mp4 in frontend/public/</span>
+                </div>
+              </video>
+            </GlassCard>
           </div>
         </div>
       </section>
 
-      {/* ── Our Services Section ── */}
-      <section id="services" className="py-20 px-6 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16">Our Services</h2>
+      {/* ── Key Features ── */}
+      <section id="services" style={{ position: "relative", zIndex: 1, padding: "80px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <h2 style={{ textAlign: "center", fontSize: "2rem", fontWeight: 800, color: headingColor, marginBottom: 48 }}>Our Key Features</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Service 1 */}
-            <div className="group">
-              <div className="text-slate-500 text-sm font-bold mb-3">01</div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-blue-400 transition">
-                ML Model Training
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Build, train, and optimize machine learning models using
-                real-world loan data with MLflow integration for tracking
-                experiments.
-              </p>
-            </div>
-
-            {/* Service 2 */}
-            <div className="group">
-              <div className="text-slate-500 text-sm font-bold mb-3">02</div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-blue-400 transition">
-                Real-time Risk Assessment
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Instant AI-powered risk scoring and eligibility predictions with
-                explainable SHAP values for loan decision support.
-              </p>
-            </div>
-
-            {/* Service 3 */}
-            <div className="group">
-              <div className="text-slate-500 text-sm font-bold mb-3">03</div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-blue-400 transition">
-                Analytics Dashboard
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Comprehensive analytics with real-time metrics, portfolio
-                performance, and trend analysis for business intelligence.
-              </p>
-            </div>
-
-            {/* Service 4 */}
-            <div className="group">
-              <div className="text-slate-500 text-sm font-bold mb-3">04</div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-blue-400 transition">
-                Batch Processing
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Process multiple applications in bulk with scheduled batch jobs
-                and CSV upload capability for high-volume assessments.
-              </p>
-            </div>
-
-            {/* Service 5 */}
-            <div className="group">
-              <div className="text-slate-500 text-sm font-bold mb-3">05</div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-blue-400 transition">
-                Role-Based Access Control
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                loan risk assessment platform combining machine learning,
-                transparent decision modeling, and secure cloud infrastructure
-                for financial institutions.
-              </p>
-            </div>
-
-            {/* Service 6 */}
-            <div className="group">
-              <div className="text-slate-500 text-sm font-bold mb-3">06</div>
-              <h3 className="text-xl font-bold mb-3 group-hover:text-blue-400 transition">
-                Security & Compliance
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Stateless predictions, encrypted data handling, and
-                compliance-ready architecture for secure loan processing.
-              </p>
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
+            {[
+              { icon: "🛡️", title: "Risk Analysis", desc: "Discover and flag risks, assess your clients and your liabilities with real-time ML scoring." },
+              { icon: "🔍", title: "Fraud Detection", desc: "Fraud transaction detection algorithms safeguard every application automatically." },
+              { icon: "📋", title: "Instant Reports", desc: "Easy-to-understand dashboards and downloadable reports for swift decision-making." },
+              { icon: "⚙️", title: "ML Model Training", desc: "Build, train, and optimize machine learning models with MLflow experiment tracking." },
+              { icon: "📊", title: "Analytics Dashboard", desc: "Real-time metrics, portfolio performance, and trend analysis for business intelligence." },
+              { icon: "🔒", title: "Security & Compliance", desc: "Encrypted data, stateless predictions, and a compliance-ready architecture." },
+            ].map((f, i) => (
+              <GlassCard key={i} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: 14, background: "rgba(124,102,213,0.12)",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                }}>{f.icon}</div>
+                <h3 style={{ fontWeight: 700, color: headingColor, fontSize: 16, margin: 0 }}>{f.title}</h3>
+                <p style={{ fontSize: 13.5, color: mutedColor, lineHeight: 1.65, margin: 0 }}>{f.desc}</p>
+              </GlassCard>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── Recent Work Section ── */}
-      <section id="work" className="py-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-16">Recent Work</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Project 1 */}
-            <div className="group relative overflow-hidden rounded-lg h-64 bg-gradient-to-br from-blue-600 to-slate-900 cursor-pointer hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <h3 className="text-xl font-bold text-white">
-                  Model v1.0 Training
-                </h3>
-                <p className="text-sm text-slate-300">
-                  Random Forest implementation
-                </p>
-              </div>
-            </div>
-
-            {/* Project 2 */}
-            <div className="group relative overflow-hidden rounded-lg h-64 bg-gradient-to-br from-emerald-600 to-slate-900 cursor-pointer hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <h3 className="text-xl font-bold text-white">
-                  XGBoost Optimization
-                </h3>
-                <p className="text-sm text-slate-300">
-                  Hyperparameter tuning completed
-                </p>
-              </div>
-            </div>
-
-            {/* Project 3 */}
-            <div className="group relative overflow-hidden rounded-lg h-64 bg-gradient-to-br from-purple-600 to-slate-900 cursor-pointer hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <h3 className="text-xl font-bold text-white">API Deployment</h3>
-                <p className="text-sm text-slate-300">
-                  Production API endpoints live
-                </p>
-              </div>
-            </div>
-
-            {/* Project 4 */}
-            <div className="group relative overflow-hidden rounded-lg h-64 bg-gradient-to-br from-amber-600 to-slate-900 cursor-pointer hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <h3 className="text-xl font-bold text-white">
-                  Dashboard Implementation
-                </h3>
-                <p className="text-sm text-slate-300">
-                  Real-time analytics launched
-                </p>
-              </div>
-            </div>
-
-            {/* Project 5 */}
-            <div className="group relative overflow-hidden rounded-lg h-64 bg-gradient-to-br from-red-600 to-slate-900 cursor-pointer hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <h3 className="text-xl font-bold text-white">RBAC System</h3>
-                <p className="text-sm text-slate-300">
-                  Multi-role access control
-                </p>
-              </div>
-            </div>
-
-            {/* Project 6 */}
-            <div className="group relative overflow-hidden rounded-lg h-64 bg-gradient-to-br from-cyan-600 to-slate-900 cursor-pointer hover:scale-105 transition-transform duration-300">
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-all"></div>
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <h3 className="text-xl font-bold text-white">
-                  Batch Processing System
-                </h3>
-                <p className="text-sm text-slate-300">
-                  CSV bulk upload feature
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── About Us Section ── */}
-      <section id="about" className="py-20 px-6 bg-slate-800/50">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-6">About Us</h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
-              LoanGuard combines state-of-the-art machine learning with
-              enterprise-grade infrastructure to revolutionize how financial
-              institutions assess loan applications.
+      {/* ── About LoanGuard ── */}
+      <section id="about" style={{ position: "relative", zIndex: 1, padding: "80px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 48, alignItems: "center" }}>
+          {/* Text */}
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#7c66d5", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>About LoanGuard Ai</p>
+            <h2 style={{ fontSize: "1.9rem", fontWeight: 800, color: headingColor, marginBottom: 16, lineHeight: 1.2 }}>AI Solutions for Smarter Banking</h2>
+            <p style={{ color: subColor, lineHeight: 1.75, marginBottom: 28 }}>
+              We leverage advanced AI to help banks manage loan risks efficiently and accurately. LoanGuard combines state-of-the-art machine learning with enterprise-grade infrastructure.
             </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-            {/* Why Choose Us - Card 1 */}
-            <div className="bg-slate-900 p-8 rounded-lg border border-slate-700 hover:border-blue-500 transition">
-              <h3 className="text-lg font-bold mb-4 text-white">
-                Creative Excellence
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Our team of data scientists and ML engineers crafts solutions
-                that are not just intelligent, but elegant and user-friendly.
-              </p>
-            </div>
-
-            {/* Why Choose Us - Card 2 */}
-            <div className="bg-slate-900 p-8 rounded-lg border border-slate-700 hover:border-blue-500 transition">
-              <h3 className="text-lg font-bold mb-4 text-white">
-                Technical Expertise
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Deep experience with ML workflows, MLOps practices, and
-                production-ready systems that scale seamlessly with your needs.
-              </p>
-            </div>
-
-            {/* Why Choose Us - Card 3 */}
-            <div className="bg-slate-900 p-8 rounded-lg border border-slate-700 hover:border-blue-500 transition">
-              <h3 className="text-lg font-bold mb-4 text-white">
-                Client Partnership
-              </h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                We view each engagement as a true partnership, working closely
-                to ensure your goals are met and exceeded.
-              </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {["Sub-second prediction latency", "Industry-leading 94%+ accuracy", "Complete audit trails & explainability", "Enterprise-grade security & compliance"].map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg,#7c66d5,#4f8ef7)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <span style={{ color: "white", fontSize: 12, fontWeight: 700 }}>✓</span>
+                  </div>
+                  <span style={{ color: subColor, fontSize: 14, fontWeight: 500 }}>{item}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-blue-600/20 to-slate-900/50 p-12 rounded-lg border border-blue-500/30">
-            <h3 className="text-2xl font-bold mb-4 text-white">
-              Why LoanGuard?
-            </h3>
-            <p className="text-slate-300 mb-6">
-              In the financial industry, speed and accuracy aren't
-              luxuries—they're necessities. LoanGuard delivers both while
-              maintaining the security and transparency that modern lenders
-              demand.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex gap-3">
-                <span className="text-blue-400 font-bold">✓</span>
-                <span className="text-slate-300">
-                  Sub-second prediction latency
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-blue-400 font-bold">✓</span>
-                <span className="text-slate-300">
-                  Industry-leading 94%+ accuracy
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-blue-400 font-bold">✓</span>
-                <span className="text-slate-300">
-                  Complete audit trails & explainability
-                </span>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-blue-400 font-bold">✓</span>
-                <span className="text-slate-300">
-                  Enterprise-grade security & compliance
-                </span>
-              </div>
+          {/* Brain visual – image only, no box */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280 }}>
+            <div style={{ textAlign: "center" }}>
+              <img
+                src="/brain.png"
+                alt="Neural AI Engine"
+                style={{
+                  width: 320, height: 280, objectFit: "contain",
+                  filter: "drop-shadow(0 0 40px rgba(130,100,255,0.75))",
+                  animation: "blobDrift3 4s ease-in-out infinite alternate",
+                }}
+                onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }}
+              />
+              <div style={{ fontSize: 120, display: "none", filter: "drop-shadow(0 0 40px rgba(130,160,255,0.75))", animation: "blobDrift3 4s ease-in-out infinite alternate" }}>🧠</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Get In Touch / Contact Section ── */}
-      <section id="contact" className="py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Get In Touch</h2>
-            <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-              Ready to transform your lending operations with AI-powered
-              assessments? Let's discuss how LoanGuard can work for you.
-            </p>
+      {/* ── Testimonials ── */}
+      <section id="testimonials" style={{ position: "relative", zIndex: 1, padding: "80px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: headingColor, marginBottom: 36 }}>What Our Clients Say</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
+            {[
+              { name: "Sarah M.", role: "Branch Manager", quote: "LoanGuard AI has transformed our risk management — decisions are faster and far more accurate." },
+              { name: "James T.", role: "Loan Officer", quote: "Incredible insights and easy to use! Our approval rate improved significantly within the first month." },
+              { name: "Priya K.", role: "VP of Lending", quote: "The fraud detection alone saved us from multiple suspicious applications. Highly recommended." },
+            ].map((t, i) => (
+              <GlassCard key={i} style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
+                  background: `linear-gradient(135deg, hsl(${220 + i * 40},60%,55%), hsl(${260 + i * 40},60%,45%))`,
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                }}>👤</div>
+                <div>
+                  <p style={{ fontSize: 14, color: subColor, fontStyle: "italic", marginBottom: 10, lineHeight: 1.6 }}>"{t.quote}"</p>
+                  <p style={{ fontWeight: 700, color: headingColor, fontSize: 14, margin: 0 }}>{t.name}</p>
+                  <p style={{ fontSize: 12, color: mutedColor, margin: 0 }}>{t.role}</p>
+                </div>
+              </GlassCard>
+            ))}
           </div>
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Contact Info */}
-            <div>
-              <div className="mb-8">
-                <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-2">
-                  Contact Info
-                </h3>
-                <div className="text-slate-300">
-                  <p className="mb-4">
-                    <strong>Email:</strong>
-                    <br />
-                    info@loanguard.com
-                  </p>
-                  <p className="mb-4">
-                    <strong>Address:</strong>
-                    <br />
-                    New York, NY 10001
-                  </p>
-                  <p>
-                    <strong>Phone:</strong>
-                    <br />
-                    +1 (212) 555-0100
-                  </p>
-                </div>
-              </div>
+      {/* ── FAQ ── */}
+      <section id="faq" style={{ position: "relative", zIndex: 1, padding: "80px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: headingColor, marginBottom: 36 }}>Frequently Asked Questions</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
+            <FaqItem q="How does LoanGuard Ai work?" a="LoanGuard uses machine learning models trained on historical loan data to predict default probability and risk scores in real time." />
+            <FaqItem q="Is my data secure?" a="Yes. All data is encrypted in transit and at rest. Our architecture is stateless and compliant with financial data regulations." />
+            <FaqItem q="Can this integrate with our existing systems?" a="Absolutely. LoanGuard exposes a REST API that integrates with most core banking and CRM platforms with minimal setup." />
+            <FaqItem q="What support do you provide?" a="We offer 24/7 support, onboarding assistance, detailed documentation, and a dedicated account manager for enterprise clients." />
+          </div>
+        </div>
+      </section>
 
-              <div>
-                <h3 className="text-sm font-bold text-blue-400 uppercase tracking-wider mb-4">
-                  Follow Us
-                </h3>
-                <div className="flex gap-6">
-                  <a
-                    href="https://twitter.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-300 hover:text-blue-400 transition text-2xl"
-                  >
-                    𝕏
-                  </a>
-                  <a
-                    href="https://github.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-300 hover:text-blue-400 transition text-2xl"
-                  >
-                    ✓
-                  </a>
-                  <a
-                    href="https://linkedin.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-300 hover:text-blue-400 transition text-2xl"
-                  >
-                    in
-                  </a>
-                </div>
-              </div>
+      {/* ── Newsletter (Contact) ── */}
+      <section id="contact" style={{ position: "relative", zIndex: 1, padding: "80px 32px" }}>
+        <div style={{ maxWidth: 700, margin: "0 auto" }}>
+          <GlassCard hover={false} style={{ textAlign: "center", padding: "56px 48px", boxShadow: "0 12px 50px rgba(120,100,220,0.14)" }}>
+            <h2 style={{ fontSize: "1.8rem", fontWeight: 800, color: headingColor, marginBottom: 10 }}>Join Our Newsletter</h2>
+            <div style={{ width: 60, height: 3, background: "linear-gradient(90deg,#7c66d5,#4f8ef7)", borderRadius: 2, margin: "0 auto 18px" }} />
+            <p style={{ color: subColor, marginBottom: 32, fontSize: 15 }}>Subscribe for the latest updates on AI-powered lending innovations.</p>
+            <div style={{ display: "flex", gap: 0, maxWidth: 480, margin: "0 auto", borderRadius: 30, overflow: "hidden", border: "1.5px solid rgba(124,102,213,0.35)", background: "rgba(255,255,255,0.65)" }}>
+              <input
+                type="email"
+                value={newsletterEmail}
+                onChange={e => setNewsletterEmail(e.target.value)}
+                placeholder="Email Address"
+                style={{
+                  flex: 1, border: "none", outline: "none", background: "transparent",
+                  padding: "14px 22px", fontSize: 15, color: headingColor,
+                }}
+              />
+              <button
+                onClick={() => { if (newsletterEmail) { alert("Thank you for subscribing!"); setNewsletterEmail(""); } }}
+                style={{
+                  padding: "14px 26px", background: "linear-gradient(135deg,#7c66d5,#4f8ef7)",
+                  color: "white", border: "none", cursor: "pointer", fontWeight: 700, fontSize: 15,
+                  display: "flex", alignItems: "center", gap: 8,
+                }}
+              >Subscribe →</button>
             </div>
 
-            {/* Contact Form */}
-            <div>
-              <form className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                    placeholder="Your name"
-                  />
+            {/* Contact info */}
+            <div style={{ marginTop: 40, display: "flex", justifyContent: "center", gap: 40, flexWrap: "wrap" }}>
+              {[
+                { label: "Email", val: "info@loanguard.com" },
+                { label: "Phone", val: "+91 9392791418" },
+                { label: "Address", val: "Dhulappaly, Secunderabad, TG" },
+              ].map((c, i) => (
+                <div key={i} style={{ textAlign: "center" }}>
+                  <p style={{ fontWeight: 700, color: "#7c66d5", fontSize: 12, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{c.label}</p>
+                  <p style={{ color: subColor, fontSize: 13 }}>{c.val}</p>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                    placeholder="your@email.com"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Message
-                  </label>
-                  <textarea
-                    rows="5"
-                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                    placeholder="Tell us about your project..."
-                  ></textarea>
-                </div>
-                <button
-                  type="submit"
-                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition uppercase text-sm font-bold tracking-wider"
-                >
-                  Send Message
-                </button>
-              </form>
+              ))}
             </div>
-          </div>
+          </GlassCard>
         </div>
       </section>
 
       {/* ── Footer ── */}
-      <footer className="bg-slate-950 border-t border-slate-800 px-6 py-12">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+      <footer style={{ position: "relative", zIndex: 1, borderTop: "1px solid rgba(180,160,255,0.3)", padding: "48px 32px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 32, marginBottom: 40 }}>
             {/* Brand */}
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded flex items-center justify-center font-bold text-white text-xs">
-                  LG
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, #7c66d5, #4f8ef7)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" /></svg>
                 </div>
-                <span className="font-bold text-lg">LoanGuard</span>
+                <span style={{ fontWeight: 800, fontSize: 16, color: headingColor }}>LoanGuard <span style={{ color: "#7c66d5" }}>Ai</span></span>
               </div>
-              <p className="text-sm text-slate-400">
-                Enterprise AI for intelligent lending
-              </p>
+              <p style={{ fontSize: 13, color: mutedColor, lineHeight: 1.6 }}>Enterprise AI for intelligent lending decisions.</p>
             </div>
 
             {/* Quick Links */}
             <div>
-              <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">
-                Quick Links
-              </h4>
-              <ul className="space-y-2 text-sm text-slate-400">
-                <li>
-                  <a
-                    href="#services"
-                    className="hover:text-blue-400 transition"
-                  >
-                    Services
-                  </a>
-                </li>
-                <li>
-                  <a href="#work" className="hover:text-blue-400 transition">
-                    Our Work
-                  </a>
-                </li>
-                <li>
-                  <a href="#about" className="hover:text-blue-400 transition">
-                    About
-                  </a>
-                </li>
-                <li>
-                  <a href="#contact" className="hover:text-blue-400 transition">
-                    Contact
-                  </a>
-                </li>
+              <h4 style={{ fontWeight: 700, color: headingColor, fontSize: 13, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Quick Links</h4>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[["Features", "#services"], ["About", "#about"], ["FAQ", "#faq"], ["Contact", "#contact"]].map(([l, h]) => (
+                  <li key={l}><a href={h} style={{ fontSize: 13, color: mutedColor, textDecoration: "none", transition: "color 0.2s" }}
+                    onMouseEnter={e => e.target.style.color = "#7c66d5"} onMouseLeave={e => e.target.style.color = mutedColor}>{l}</a></li>
+                ))}
               </ul>
             </div>
 
             {/* Resources */}
             <div>
-              <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">
-                Resources
-              </h4>
-              <ul className="space-y-2 text-sm text-slate-400">
-                <li>
-                  <Link
-                    to="/privacy"
-                    className="hover:text-blue-400 transition"
-                  >
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link to="/terms" className="hover:text-blue-400 transition">
-                    Terms of Service
-                  </Link>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition">
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-blue-400 transition">
-                    Blog
-                  </a>
-                </li>
+              <h4 style={{ fontWeight: 700, color: headingColor, fontSize: 13, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Resources</h4>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                {[["Privacy Policy", "/privacy"], ["Terms of Service", "/terms"]].map(([l, to]) => (
+                  <li key={l}><Link to={to} style={{ fontSize: 13, color: mutedColor, textDecoration: "none" }}
+                    onMouseEnter={e => e.target.style.color = "#7c66d5"} onMouseLeave={e => e.target.style.color = mutedColor}>{l}</Link></li>
+                ))}
+                {[["Documentation", "#"], ["Blog", "#"]].map(([l, h]) => (
+                  <li key={l}><a href={h} style={{ fontSize: 13, color: mutedColor, textDecoration: "none" }}
+                    onMouseEnter={e => e.target.style.color = "#7c66d5"} onMouseLeave={e => e.target.style.color = mutedColor}>{l}</a></li>
+                ))}
               </ul>
             </div>
 
-            {/* Newsletter */}
+            {/* Platform */}
             <div>
-              <h4 className="font-bold text-white mb-4 text-sm uppercase tracking-wider">
-                Newsletter
-              </h4>
-              <p className="text-sm text-slate-400 mb-3">
-                Stay updated with LoanGuard news
-              </p>
-              <div className="flex">
-                <input
-                  type="email"
-                  className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 text-sm text-white placeholder-slate-500 focus:outline-none"
-                  placeholder="Your email"
-                />
-                <button className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white transition text-sm">
-                  →
-                </button>
+              <h4 style={{ fontWeight: 700, color: headingColor, fontSize: 13, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Platform</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <Link to="/check" style={{ fontSize: 13, color: mutedColor, textDecoration: "none" }}
+                  onMouseEnter={e => e.target.style.color = "#7c66d5"} onMouseLeave={e => e.target.style.color = mutedColor}>Check Eligibility</Link>
+                <Link to="/login" style={{ fontSize: 13, color: mutedColor, textDecoration: "none" }}
+                  onMouseEnter={e => e.target.style.color = "#7c66d5"} onMouseLeave={e => e.target.style.color = mutedColor}>Officer Login</Link>
               </div>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-slate-800 pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center text-sm text-slate-400">
-              <p>
-                &copy; {new Date().getFullYear()} LoanGuard. All rights
-                reserved.
-              </p>
-              <div className="flex gap-6 mt-4 md:mt-0">
-                <a
-                  href="https://twitter.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition"
-                >
-                  Twitter
-                </a>
-                <a
-                  href="https://github.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition"
-                >
-                  GitHub
-                </a>
-                <a
-                  href="https://linkedin.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-white transition"
-                >
-                  LinkedIn
-                </a>
-              </div>
+          {/* Bottom bar */}
+          <div style={{ borderTop: "1px solid rgba(180,160,255,0.25)", paddingTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <p style={{ fontSize: 13, color: mutedColor }}>© {new Date().getFullYear()} LoanGuard Ai. All rights reserved.</p>
+            <div style={{ display: "flex", gap: 18 }}>
+              {[["🐦", "https://twitter.com"], ["💼", "https://linkedin.com"], ["💻", "https://github.com"], ["✉️", "mailto:info@loanguard.com"]].map(([icon, href], i) => (
+                <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                  style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(124,102,213,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, textDecoration: "none", transition: "background 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(124,102,213,0.28)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "rgba(124,102,213,0.12)"}
+                >{icon}</a>
+              ))}
             </div>
+            <p style={{ fontSize: 13, color: mutedColor }}>✉ contact@loanguardai.com</p>
           </div>
         </div>
       </footer>
+
       {/* ── LoanGuard AI Floating Chatbot ── */}
       <LoanChatBot />
     </div>
