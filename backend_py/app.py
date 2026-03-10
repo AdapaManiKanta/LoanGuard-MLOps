@@ -80,7 +80,9 @@ def get_connection():
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
-        port=os.getenv("DB_PORT")
+        port=os.getenv("DB_PORT"),
+        sslmode="require",
+        connect_timeout=10
     )
 
 def classify_risk(prob):
@@ -179,6 +181,23 @@ def check_eligibility():
         n = data["Loan_Amount_Term"]
         r = 10 / (12 * 100)
         emi = round(p * r * (1 + r)**n / ((1 + r)**n - 1), 2) if n > 0 else 0
+
+        # ── Affordability Override ──────────────────────────────────────────
+        # Bank rule: EMI must not exceed 50% of total monthly income.
+        # If the ML model still says "Approved" but EMI is unaffordable, reject.
+        total_income = app_input.ApplicantIncome + app_input.CoapplicantIncome
+        emi_ratio = emi / total_income if total_income > 0 else float("inf")
+        if emi_ratio > 0.50:
+            prediction = 0
+            probability = max(0.0, probability - 0.5)   # deflate confidence shown
+            risk_level = "High Risk"
+            affordability_note = (
+                f"EMI (₹{emi:,.0f}) exceeds 50% of your total monthly income "
+                f"(₹{total_income:,}). Reduce your loan amount or extend the repayment term."
+            )
+            # Prepend the affordability tip so it appears first
+            tips = ["⚠️ " + affordability_note] + tips
+        # ───────────────────────────────────────────────────────────────────
 
         return jsonify({
             "prediction": prediction,
