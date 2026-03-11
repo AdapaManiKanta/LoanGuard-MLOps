@@ -67,10 +67,14 @@ with mlflow.start_run():
     # Log model to MLflow
     mlflow.sklearn.log_model(model, "loan_risk_model")
 
-    # SHAP Explainability
-    import shap
-    explainer = shap.LinearExplainer(model, X_train)
-    joblib.dump(explainer, "models/shap_explainer.pkl")
+    # SHAP Explainability — optional (may fail if numba/shap incompatible with NumPy 2.x)
+    try:
+        import shap
+        explainer = shap.LinearExplainer(model, X_train)
+        joblib.dump(explainer, "models/shap_explainer.pkl")
+        print("SHAP explainer saved.")
+    except Exception as shap_err:
+        print(f"SHAP explainer skipped (NumPy compatibility issue): {shap_err}")
 
     # Save model metadata for Admin Panel UI (read by /admin/model-info)
     meta = {
@@ -84,4 +88,5 @@ with mlflow.start_run():
 
     # Output format must match app.py parser: "Accuracy: X.XXXX, F1: Y.YYYY"
     print(f"Model Trained. Accuracy: {acc:.4f}, F1: {f1:.4f}")
-    print("Logged to MLflow successfully. SHAP Explainer saved.")
+    print("Logged to MLflow successfully.")
+

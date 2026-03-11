@@ -345,12 +345,12 @@ def login():
       401:
         description: Invalid credentials
     """
-    from auth import USERS
+    from auth import authenticate_user
     creds = request.json or {}
-    username = creds.get("username", "")
-    password = creds.get("password", "")
-    user = USERS.get(username)
-    if user and user["password"] == password:
+    username = (creds.get("username") or "").strip()
+    password = (creds.get("password") or "").strip()
+    user = authenticate_user(username, password)
+    if user:
         token = jwt.encode(
             {
                 "sub": username,
@@ -361,7 +361,6 @@ def login():
             JWT_SECRET,
             algorithm="HS256"
         )
-        # Audit log
         try:
             _audit_log("LOGIN", username, {"role": user["role"]})
         except Exception:
@@ -412,10 +411,27 @@ def stats():
     })
 
 # --- RBAC, Monitoring, Audit routes ---
-from auth import token_required as _tr, role_required, get_admin_users, get_me, get_connection as _ac_conn
+from auth import (
+    token_required as _tr, role_required,
+    get_admin_users, get_me, get_connection as _ac_conn,
+    create_user, update_user, delete_user, init_users_table
+)
 from monitoring import get_drift_status
 import subprocess
 import sys
+
+# Init / seed lg_users table on startup
+try:
+    init_users_table()
+except Exception as e:
+    print(f"[LoanGuard] Warning: could not init lg_users table: {e}")
+
+# Init leads tables
+from leads import init_leads_tables, register_leads_routes
+try:
+    init_leads_tables(get_connection)
+except Exception as e:
+    print(f"[LoanGuard] Warning: could not init leads tables: {e}")
 
 def _audit_log(event_type, username, details):
     """Append-only audit log insert."""
@@ -439,8 +455,42 @@ def me():
 
 @app.route("/admin/users", methods=["GET"])
 @role_required("ADMIN")
-def admin_users():
+def admin_users_get():
     return get_admin_users()
+
+@app.route("/admin/users", methods=["POST"])
+@role_required("ADMIN")
+def admin_users_create():
+    result = create_user()
+    if result[1] == 201:
+        try:
+            data = request.json or {}
+            _audit_log("USER_CREATED", request.current_user, {
+                "new_username": data.get("username"), "role": data.get("role")
+            })
+        except Exception:
+            pass
+    return result
+
+@app.route("/admin/users/<username>", methods=["PUT"])
+@role_required("ADMIN")
+def admin_users_update(username):
+    result = update_user(username)
+    try:
+        _audit_log("USER_UPDATED", request.current_user, {"target": username})
+    except Exception:
+        pass
+    return result
+
+@app.route("/admin/users/<username>", methods=["DELETE"])
+@role_required("ADMIN")
+def admin_users_delete(username):
+    result = delete_user(username)
+    try:
+        _audit_log("USER_DELETED", request.current_user, {"target": username})
+    except Exception:
+        pass
+    return result
 
 @app.route("/drift-status", methods=["GET"])
 @token_required
@@ -624,6 +674,9 @@ app.add_url_rule("/report/<int:app_id>", "report", token_required(generate_repor
 # ── Gemini Chat ──────────────────────────────────────────────────────────────
 from routes.chat import chat_bp
 app.register_blueprint(chat_bp, url_prefix="/api")
+
+# ── Leads / Document Verification Routes ─────────────────────────────────────
+register_leads_routes(app, get_connection, role_required, token_required, _audit_log)
 
 if __name__ == "__main__":
     app.run(debug=True)

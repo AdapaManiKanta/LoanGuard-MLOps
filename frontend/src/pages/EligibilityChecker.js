@@ -88,6 +88,21 @@ function EligibilityChecker() {
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
 
+    // Interest / lead state
+    const [interest, setInterest] = useState(null); // null | 'yes' | 'no'
+    const [contact, setContact] = useState({ name: "", email: "", phone: "" });
+    const [contactErrors, setContactErrors] = useState({});
+    const [leadLoading, setLeadLoading] = useState(false);
+    const [leadId, setLeadId] = useState(null);
+    const [leadSubmitted, setLeadSubmitted] = useState(false);
+
+    // Document upload state
+    const [docs, setDocs] = useState([
+        { docType: "Aadhaar Card", file: null, status: null, id: null },
+    ]);
+    const [docsUploading, setDocsUploading] = useState(false);
+    const DOC_TYPES = ["Aadhaar Card", "PAN Card", "Income Proof", "Bank Statement", "Property Papers"];
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         const numVal = numericFields.includes(name) ? Number(value) : value;
@@ -98,6 +113,75 @@ function EligibilityChecker() {
         else if (name === "LoanAmount" && numVal <= 0) err = "Must be > 0.";
         else if (name === "Loan_Amount_Term" && (numVal < 12 || numVal > 360)) err = "Input 12 to 360 months.";
         setErrors(prev => ({ ...prev, [name]: err }));
+    };
+
+    const handleContactChange = (e) => {
+        const { name, value } = e.target;
+        setContact(prev => ({ ...prev, [name]: value }));
+        let err = "";
+        if (name === "email" && value && !/^[^@]+@[^@]+\.[^@]+$/.test(value)) err = "Invalid email address.";
+        if (name === "phone" && value && !/^[0-9]{10,}$/.test(value.replace(/\s/g, ""))) err = "Enter a valid 10-digit phone number.";
+        setContactErrors(prev => ({ ...prev, [name]: err }));
+    };
+
+    const handleSubmitLead = async () => {
+        if (!contact.email || !contact.phone) {
+            toast.error("Please enter your email and phone number.");
+            return;
+        }
+        if (Object.values(contactErrors).some(e => e)) {
+            toast.error("Please fix validation errors before submitting.");
+            return;
+        }
+        setLeadLoading(true);
+        try {
+            const res = await axios.post(`${API_BASE}/leads`, {
+                applicant_name: contact.name || form.ApplicantName,
+                email: contact.email,
+                phone: contact.phone,
+                ai_result: result,
+            });
+            setLeadId(res.data.lead_id);
+            setLeadSubmitted(true);
+            toast.success("🎉 Thank you! A confirmation email has been sent.");
+        } catch (err) {
+            const msg = err.response?.data?.error || "Submission failed — please try again.";
+            if (err.response?.status === 409) {
+                toast.info("ℹ️ You've already submitted interest with this contact info.");
+                setLeadId(err.response?.data?.lead_id);
+                setLeadSubmitted(true);
+            } else {
+                toast.error(`❌ ${msg}`);
+            }
+        } finally {
+            setLeadLoading(false);
+        }
+    };
+
+    const handleDocUpload = async () => {
+        if (!leadId) return;
+        const validDocs = docs.filter(d => d.file);
+        if (validDocs.length === 0) { toast.error("Please select at least one file."); return; }
+        setDocsUploading(true);
+        const updatedDocs = [...docs];
+        for (let i = 0; i < docs.length; i++) {
+            const d = docs[i];
+            if (!d.file) continue;
+            const fd = new FormData();
+            fd.append("file", d.file);
+            fd.append("doc_type", d.docType);
+            try {
+                const res = await axios.post(`${API_BASE}/leads/${leadId}/documents`, fd);
+                updatedDocs[i] = { ...updatedDocs[i], status: "uploaded", id: res.data.doc_id };
+            } catch (err) {
+                updatedDocs[i] = { ...updatedDocs[i], status: "error" };
+                toast.error(`❌ Upload failed for ${d.docType}`);
+            }
+        }
+        setDocs(updatedDocs);
+        setDocsUploading(false);
+        const successCount = updatedDocs.filter(d => d.status === "uploaded").length;
+        if (successCount > 0) toast.success(`✅ ${successCount} document(s) uploaded successfully!`);
     };
 
     const handleSubmit = async (e) => {
@@ -384,6 +468,258 @@ function EligibilityChecker() {
                                                 </span>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Interest Selection Section ── */}
+                            {!leadSubmitted ? (
+                                <div className="glass-panel lg-fade" style={{
+                                    padding: 24,
+                                    background: "rgba(124,77,255,0.04)",
+                                    border: "1px solid rgba(124,77,255,0.2)",
+                                    marginTop: 4,
+                                }}>
+                                    <div style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: 2, color: "#a78bfa",
+                                        textTransform: "uppercase", marginBottom: 14
+                                    }}>What would you like to do?</div>
+
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+                                        {/* Interested */}
+                                        <label onClick={() => setInterest("yes")}
+                                            style={{
+                                                display: "flex", alignItems: "center", gap: 12,
+                                                padding: "12px 16px", borderRadius: 12, cursor: "pointer",
+                                                background: interest === "yes" ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.03)",
+                                                border: `1px solid ${interest === "yes" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.07)"}`,
+                                                transition: "all 0.2s",
+                                            }}>
+                                            <div style={{
+                                                width: 18, height: 18, borderRadius: "50%",
+                                                border: `2px solid ${interest === "yes" ? "#4ade80" : "rgba(148,163,184,0.3)"}`,
+                                                background: interest === "yes" ? "#4ade80" : "transparent",
+                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                flexShrink: 0, transition: "all 0.2s",
+                                            }}>
+                                                {interest === "yes" && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff" }} />}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: interest === "yes" ? "#86efac" : "#e2e8f0" }}>
+                                                    ✅ I'm Interested — Please Contact Me
+                                                </div>
+                                                <div style={{ fontSize: 11, color: "rgba(148,163,184,0.45)", marginTop: 2 }}>
+                                                    A loan officer will reach out within 24 hours
+                                                </div>
+                                            </div>
+                                        </label>
+
+                                        {/* Not Interested */}
+                                        <label onClick={() => setInterest("no")}
+                                            style={{
+                                                display: "flex", alignItems: "center", gap: 12,
+                                                padding: "12px 16px", borderRadius: 12, cursor: "pointer",
+                                                background: interest === "no" ? "rgba(148,163,184,0.06)" : "rgba(255,255,255,0.02)",
+                                                border: `1px solid ${interest === "no" ? "rgba(148,163,184,0.2)" : "rgba(255,255,255,0.06)"}`,
+                                                transition: "all 0.2s",
+                                            }}>
+                                            <div style={{
+                                                width: 18, height: 18, borderRadius: "50%",
+                                                border: `2px solid ${interest === "no" ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.25)"}`,
+                                                background: interest === "no" ? "rgba(148,163,184,0.3)" : "transparent",
+                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                flexShrink: 0, transition: "all 0.2s",
+                                            }}>
+                                                {interest === "no" && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(148,163,184,0.8)" }} />}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: interest === "no" ? "rgba(148,163,184,0.7)" : "#e2e8f0" }}>
+                                                    ❌ Not Interested — Just Checking
+                                                </div>
+                                                <div style={{ fontSize: 11, color: "rgba(148,163,184,0.4)", marginTop: 2 }}>
+                                                    No further action required
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    {/* Contact Fields — shown only if interested */}
+                                    {interest === "yes" && (
+                                        <div style={{
+                                            display: "flex", flexDirection: "column", gap: 12,
+                                            animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) both"
+                                        }}>
+                                            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 4 }} />
+                                            <div style={{
+                                                fontSize: 9, fontWeight: 800, letterSpacing: 2,
+                                                textTransform: "uppercase", color: "rgba(148,163,184,0.4)"
+                                            }}>Your Contact Details</div>
+
+                                            {/* Email */}
+                                            <div>
+                                                <label style={{
+                                                    fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+                                                    textTransform: "uppercase", color: "rgba(148,163,184,0.4)",
+                                                    display: "block", marginBottom: 7
+                                                }}>Email Address *</label>
+                                                <div style={{ position: "relative" }}>
+                                                    <span style={{
+                                                        position: "absolute", left: 14, top: "50%",
+                                                        transform: "translateY(-50%)", fontSize: 14, opacity: 0.4, pointerEvents: "none"
+                                                    }}>📧</span>
+                                                    <input type="email" name="email" value={contact.email}
+                                                        onChange={handleContactChange}
+                                                        placeholder="your@email.com" required
+                                                        className="dark-input" style={{
+                                                            paddingLeft: 40,
+                                                            borderColor: contactErrors.email ? "rgba(239,68,68,0.5)" : undefined
+                                                        }} />
+                                                </div>
+                                                {contactErrors.email && <div style={{ fontSize: 10, color: "#fca5a5", fontWeight: 600, marginTop: 4 }}>{contactErrors.email}</div>}
+                                            </div>
+
+                                            {/* Phone */}
+                                            <div>
+                                                <label style={{
+                                                    fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
+                                                    textTransform: "uppercase", color: "rgba(148,163,184,0.4)",
+                                                    display: "block", marginBottom: 7
+                                                }}>Phone Number *</label>
+                                                <div style={{ position: "relative" }}>
+                                                    <span style={{
+                                                        position: "absolute", left: 14, top: "50%",
+                                                        transform: "translateY(-50%)", fontSize: 14, opacity: 0.4, pointerEvents: "none"
+                                                    }}>📱</span>
+                                                    <input type="tel" name="phone" value={contact.phone}
+                                                        onChange={handleContactChange}
+                                                        placeholder="10-digit mobile number" required
+                                                        className="dark-input" style={{
+                                                            paddingLeft: 40,
+                                                            borderColor: contactErrors.phone ? "rgba(239,68,68,0.5)" : undefined
+                                                        }} />
+                                                </div>
+                                                {contactErrors.phone && <div style={{ fontSize: 10, color: "#fca5a5", fontWeight: 600, marginTop: 4 }}>{contactErrors.phone}</div>}
+                                            </div>
+
+                                            <button type="button" onClick={handleSubmitLead}
+                                                disabled={leadLoading || !contact.email || !contact.phone}
+                                                className="shimmer-btn"
+                                                style={{ padding: "13px 0", width: "100%", marginTop: 4 }}>
+                                                {leadLoading ? (
+                                                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
+                                                        <span style={{
+                                                            width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)",
+                                                            borderTop: "2px solid white", borderRadius: "50%",
+                                                            animation: "spin 1s linear infinite", display: "inline-block"
+                                                        }} />
+                                                        Submitting...
+                                                    </span>
+                                                ) : "📩 Submit Interest & Get Contacted"}
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {interest === "no" && (
+                                        <div style={{
+                                            padding: "12px 16px", borderRadius: 12,
+                                            background: "rgba(148,163,184,0.06)",
+                                            border: "1px solid rgba(148,163,184,0.1)",
+                                            fontSize: 12, color: "rgba(148,163,184,0.5)",
+                                            animation: "fadeUp 0.4s cubic-bezier(.16,1,.3,1) both",
+                                        }}>
+                                            👍 No problem! Your eligibility result is shown above for reference.
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* ── Thank-you screen + document upload ── */
+                                <div className="glass-panel lg-fade" style={{
+                                    padding: 24,
+                                    background: "rgba(34,197,94,0.05)",
+                                    border: "1px solid rgba(34,197,94,0.2)",
+                                    marginTop: 4,
+                                }}>
+                                    <div style={{ textAlign: "center", marginBottom: 20 }}>
+                                        <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+                                        <div style={{ fontWeight: 800, fontSize: 16, color: "#86efac", marginBottom: 6 }}>
+                                            Thank You, {contact.name || form.ApplicantName || "Applicant"}!
+                                        </div>
+                                        <div style={{ fontSize: 12, color: "rgba(148,163,184,0.55)", lineHeight: 1.7 }}>
+                                            Our loan officer will contact you at <strong style={{ color: "#a78bfa" }}>{contact.email}</strong><br />
+                                            within 24 business hours. A confirmation email has been sent.
+                                        </div>
+                                    </div>
+
+                                    {/* Document Upload */}
+                                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20 }}>
+                                        <div style={{
+                                            fontSize: 9, fontWeight: 800, letterSpacing: 2, color: "rgba(148,163,184,0.4)",
+                                            textTransform: "uppercase", marginBottom: 4
+                                        }}>📄 Upload Supporting Documents</div>
+                                        <div style={{ fontSize: 11, color: "rgba(148,163,184,0.4)", marginBottom: 14 }}>
+                                            Optional but speeds up your application. Accepted: PDF, JPG, PNG.
+                                        </div>
+
+                                        {docs.map((d, i) => (
+                                            <div key={i} style={{
+                                                display: "flex", flexDirection: "column", gap: 8,
+                                                marginBottom: 12, padding: 14,
+                                                background: d.status === "uploaded" ? "rgba(34,197,94,0.07)" : d.status === "error" ? "rgba(239,68,68,0.07)" : "rgba(255,255,255,0.03)",
+                                                border: `1px solid ${d.status === "uploaded" ? "rgba(34,197,94,0.2)" : d.status === "error" ? "rgba(239,68,68,0.2)" : "rgba(255,255,255,0.07)"}`,
+                                                borderRadius: 12,
+                                            }}>
+                                                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                                    <select value={d.docType}
+                                                        onChange={e => { const u = [...docs]; u[i].docType = e.target.value; setDocs(u); }}
+                                                        className="dark-select" style={{ flex: 1, fontSize: 12 }}>
+                                                        {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                                    </select>
+                                                    {i > 0 && (
+                                                        <button type="button" onClick={() => setDocs(docs.filter((_, j) => j !== i))}
+                                                            style={{
+                                                                background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                                                                borderRadius: 8, padding: "8px 12px", cursor: "pointer",
+                                                                color: "#fca5a5", fontSize: 12, fontWeight: 700
+                                                            }}>✕</button>
+                                                    )}
+                                                </div>
+                                                <input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                                                    disabled={d.status === "uploaded"}
+                                                    onChange={e => { const u = [...docs]; u[i].file = e.target.files[0]; u[i].status = null; setDocs(u); }}
+                                                    style={{ fontSize: 11, color: "rgba(148,163,184,0.6)" }} />
+                                                {d.status === "uploaded" && <div style={{ fontSize: 11, color: "#86efac", fontWeight: 700 }}>✅ Uploaded successfully</div>}
+                                                {d.status === "error" && <div style={{ fontSize: 11, color: "#fca5a5", fontWeight: 700 }}>❌ Upload failed — please retry</div>}
+                                            </div>
+                                        ))}
+
+                                        {docs.length < 5 && docs.every(d => d.status === "uploaded" || d.file) && (
+                                            <button type="button"
+                                                onClick={() => setDocs([...docs, { docType: "PAN Card", file: null, status: null, id: null }])}
+                                                style={{
+                                                    fontSize: 12, fontWeight: 700, color: "#a78bfa",
+                                                    background: "rgba(124,77,255,0.08)", border: "1px solid rgba(124,77,255,0.2)",
+                                                    borderRadius: 10, padding: "8px 16px", cursor: "pointer", marginBottom: 12
+                                                }}>
+                                                + Add Another Document
+                                            </button>
+                                        )}
+
+                                        {docs.some(d => d.file && d.status !== "uploaded") && (
+                                            <button type="button" onClick={handleDocUpload}
+                                                disabled={docsUploading}
+                                                className="shimmer-btn"
+                                                style={{ width: "100%", padding: "12px" }}>
+                                                {docsUploading ? (
+                                                    <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}>
+                                                        <span style={{
+                                                            width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)",
+                                                            borderTop: "2px solid white", borderRadius: "50%",
+                                                            animation: "spin 1s linear infinite", display: "inline-block"
+                                                        }} /> Uploading...
+                                                    </span>
+                                                ) : "📤 Upload Documents"}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
