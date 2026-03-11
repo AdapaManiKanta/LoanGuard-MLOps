@@ -3,10 +3,29 @@ import axios from "axios";
 
 const API_BASE = "http://127.0.0.1:5000";
 
-const ROLE_BADGE = {
-    ADMIN: "bg-blue-50 text-blue-700",
-    MANAGER: "bg-amber-50 text-amber-700",
-    OFFICER: "bg-emerald-50 text-emerald-700",
+const ROLE_COLORS = {
+    ADMIN: { bg: "rgba(124,77,255,0.12)", text: "#a78bfa", border: "rgba(124,77,255,0.25)" },
+    MANAGER: { bg: "rgba(245,158,11,0.1)", text: "#fde68a", border: "rgba(245,158,11,0.2)" },
+    OFFICER: { bg: "rgba(34,197,94,0.1)", text: "#86efac", border: "rgba(34,197,94,0.2)" },
+};
+
+const EVENT_BADGE = {
+    LOGIN: { bg: "rgba(148,163,184,0.1)", text: "rgba(148,163,184,0.8)", border: "rgba(148,163,184,0.15)" },
+    PREDICT: { bg: "rgba(34,197,94,0.1)", text: "#86efac", border: "rgba(34,197,94,0.2)" },
+    RETRAIN: { bg: "rgba(124,77,255,0.12)", text: "#a78bfa", border: "rgba(124,77,255,0.25)" },
+};
+
+const card = {
+    background: "rgba(255,255,255,0.025)",
+    border: "1px solid rgba(255,255,255,0.07)",
+    borderRadius: 20,
+};
+
+const td = {
+    padding: "12px 16px",
+    borderBottom: "1px solid rgba(255,255,255,0.04)",
+    fontSize: 12, color: "rgba(148,163,184,0.8)",
+    verticalAlign: "middle",
 };
 
 export default function AdminPanel({ token }) {
@@ -18,7 +37,6 @@ export default function AdminPanel({ token }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Retrain state
     const [retraining, setRetraining] = useState(false);
     const [retrainResult, setRetrainResult] = useState(null);
     const [retrainError, setRetrainError] = useState(null);
@@ -26,10 +44,7 @@ export default function AdminPanel({ token }) {
     const headers = { Authorization: `Bearer ${token}` };
 
     useEffect(() => {
-        fetchUsers();
-        fetchAudit();
-        fetchModelInfo();
-        fetchDrift();
+        fetchUsers(); fetchAudit(); fetchModelInfo(); fetchDrift();
     }, []);
 
     const fetchUsers = async () => {
@@ -38,139 +53,156 @@ export default function AdminPanel({ token }) {
             setUsers(res.data.users || []);
         } catch (e) { setError(e.response?.data?.error || "Failed to load users"); }
     };
-
     const fetchAudit = async () => {
         setLoading(true);
-        try {
-            const res = await axios.get(`${API_BASE}/audit`, { headers });
-            setAudit(res.data || []);
-        } catch (e) { } finally { setLoading(false); }
+        try { const res = await axios.get(`${API_BASE}/audit`, { headers }); setAudit(res.data || []); }
+        catch (e) { } finally { setLoading(false); }
     };
-
     const fetchModelInfo = async () => {
-        try {
-            const res = await axios.get(`${API_BASE}/admin/model-info`, { headers });
-            setModelInfo(res.data);
-        } catch (e) { }
+        try { const res = await axios.get(`${API_BASE}/admin/model-info`, { headers }); setModelInfo(res.data); }
+        catch (e) { }
     };
-
     const fetchDrift = async () => {
-        try {
-            const res = await axios.get(`${API_BASE}/drift-status`, { headers });
-            setDrift(res.data);
-        } catch (e) { }
+        try { const res = await axios.get(`${API_BASE}/drift-status`, { headers }); setDrift(res.data); }
+        catch (e) { }
     };
-
     const handleRetrain = async () => {
-        setRetraining(true);
-        setRetrainResult(null);
-        setRetrainError(null);
+        setRetraining(true); setRetrainResult(null); setRetrainError(null);
         try {
             const res = await axios.post(`${API_BASE}/admin/retrain`, {}, { headers });
-            setRetrainResult(res.data);
-            fetchModelInfo();
-            fetchDrift();
-            fetchAudit();
-        } catch (e) {
-            setRetrainError(e.response?.data?.error || "Retrain request failed");
-        } finally {
-            setRetraining(false);
-        }
+            setRetrainResult(res.data); fetchModelInfo(); fetchDrift(); fetchAudit();
+        } catch (e) { setRetrainError(e.response?.data?.error || "Retrain request failed"); }
+        finally { setRetraining(false); }
+    };
+
+    const TABS = [
+        { id: "users", label: "Users", icon: "👥" },
+        { id: "roles", label: "Roles", icon: "🛡️" },
+        { id: "audit", label: "Audit Logs", icon: "📋" },
+        { id: "model", label: "Model Settings", icon: "🧠" },
+    ];
+
+    const theadTh = {
+        padding: "10px 16px", textAlign: "left",
+        fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase",
+        color: "rgba(148,163,184,0.35)", borderBottom: "1px solid rgba(255,255,255,0.06)",
+        background: "rgba(255,255,255,0.02)",
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Header */}
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <h2 className="text-2xl font-bold text-brand-dark flex items-center gap-2">
-                    Manage Users
-                </h2>
-                <div className="flex items-center gap-4">
-                    <button className="btn-primary text-xs shadow-none">
-                        + Add User
-                    </button>
+            <div style={{
+                paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex", justifyContent: "space-between", alignItems: "center"
+            }}>
+                <div>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.5px", marginBottom: 4 }}>
+                        Admin Panel
+                    </h2>
+                    <p style={{ fontSize: 12, color: "rgba(148,163,184,0.4)" }}>Manage users, audit logs, and model settings</p>
                 </div>
+                <button style={{
+                    padding: "10px 22px", background: "linear-gradient(135deg,#7c4dff,#3b82f6)",
+                    border: "none", borderRadius: 100, color: "white", fontWeight: 700, fontSize: 12,
+                    cursor: "pointer", letterSpacing: 1,
+                    boxShadow: "0 4px 20px rgba(124,77,255,0.4)"
+                }}>
+                    + Add User
+                </button>
             </div>
 
             {/* Sub-tabs */}
-            <div className="flex gap-2">
-                {[
-                    { id: "users", label: "Users", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
-                    { id: "roles", label: "Roles", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> },
-                    { id: "audit", label: "Audit Logs", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg> },
-                    { id: "model", label: "Model Settings", icon: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> },
-                ].map((t) => (
-                    <button
-                        key={t.id}
-                        onClick={() => setTab(t.id)}
-                        className={`flex items-center gap-2 px-6 py-2.5 text-xs font-bold rounded-lg border transition-all ${tab === t.id
-                            ? "bg-white border-slate-200 text-brand-dark shadow-sm"
-                            : "bg-slate-50 border-transparent text-slate-500 hover:bg-slate-100 hover:text-brand-dark"
-                            }`}
-                    >
-                        {t.icon} {t.label}
+            <div style={{ display: "flex", gap: 8 }}>
+                {TABS.map(t => (
+                    <button key={t.id} onClick={() => setTab(t.id)} style={{
+                        display: "flex", alignItems: "center", gap: 8, padding: "9px 18px",
+                        border: tab === t.id ? "1px solid rgba(124,77,255,0.35)" : "1px solid rgba(255,255,255,0.07)",
+                        borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        background: tab === t.id ? "rgba(124,77,255,0.12)" : "rgba(255,255,255,0.03)",
+                        color: tab === t.id ? "#a78bfa" : "rgba(148,163,184,0.55)",
+                        transition: "all 0.2s",
+                    }}>
+                        <span style={{ fontSize: 14 }}>{t.icon}</span> {t.label}
                     </button>
                 ))}
             </div>
 
-            {/* Content Windows */}
-            <div className="premium-card overflow-hidden">
-                {/* Users tab */}
+            {/* Content */}
+            <div style={card}>
+                {/* Users */}
                 {tab === "users" && (
-                    <div className="animate-fade-in flex flex-col h-full">
-                        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <div className="relative">
-                                    <svg className="w-4 h-4 absolute left-3 top-1/2 -mt-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                    <input type="text" placeholder="Search name or ID..." className="premium-input pl-9 py-2 text-xs bg-white w-56" />
-                                </div>
-                                <select className="premium-select py-2 text-xs w-36 bg-white">
-                                    <option value="all">Report</option>
-                                </select>
-                                <select className="premium-select py-2 text-xs w-36 bg-white">
-                                    <option value="all">Last Login</option>
-                                </select>
-                            </div>
-                            <button className="btn-secondary py-2 text-xs flex items-center gap-2 px-4 shadow-sm border-slate-200">
-                                Filters <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                            </button>
+                    <div>
+                        <div style={{
+                            padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)",
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            background: "rgba(255,255,255,0.015)"
+                        }}>
+                            <input type="text" placeholder="🔍  Search users..."
+                                style={{
+                                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                                    borderRadius: 10, padding: "8px 14px", color: "#e2e8f0", fontSize: 12,
+                                    outline: "none", width: 220, fontFamily: "inherit"
+                                }} />
                         </div>
-                        {error && <div className="px-6 py-4 text-red-500 text-xs bg-red-50 font-bold border-b border-red-100">{error}</div>}
-                        <div className="overflow-x-auto">
-                            <table className="premium-table">
+                        {error && <div style={{
+                            padding: "12px 20px", fontSize: 12, color: "#fca5a5",
+                            background: "rgba(239,68,68,0.06)", borderBottom: "1px solid rgba(239,68,68,0.12)"
+                        }}>{error}</div>}
+                        <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Email</th>
-                                        <th>Role</th>
-                                        <th>Last Login</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
+                                        {["ID", "Name", "Email", "Role", "Last Login", "Status", "Actions"].map(h => (
+                                            <th key={h} style={theadTh}>{h}</th>
+                                        ))}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {users.map((u, i) => (
-                                        <tr key={u.username}>
-                                            <td className="text-slate-400 font-mono text-[10px]">#01{i + 1}</td>
-                                            <td className="font-bold text-xs">{u.name}</td>
-                                            <td className="text-slate-500 text-xs">{u.username}@loanguard.co</td>
-                                            <td>
-                                                <span className={`px-2.5 py-1 rounded inline-flex text-[10px] font-bold tracking-widest ${ROLE_BADGE[u.role] || ""}`}>
-                                                    {u.role}
-                                                </span>
+                                        <tr key={u.username} style={{ transition: "background 0.2s" }}
+                                            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                                            onMouseLeave={e => e.currentTarget.style.background = ""}>
+                                            <td style={{ ...td, fontFamily: "monospace", fontSize: 10, color: "rgba(148,163,184,0.35)" }}>
+                                                #01{i + 1}
                                             </td>
-                                            <td className="text-slate-500 text-xs font-mono">20-03-2026</td>
-                                            <td><span className="badge badge-approved">Active</span></td>
-                                            <td>
-                                                <button className="text-[10px] font-bold text-brand-blue bg-blue-50 px-3 py-1 rounded hover:bg-blue-100 transition-colors">
+                                            <td style={{ ...td, fontWeight: 700, color: "#f1f5f9" }}>{u.name}</td>
+                                            <td style={{ ...td, color: "rgba(148,163,184,0.5)" }}>{u.username}@loanguard.co</td>
+                                            <td style={td}>
+                                                <span style={{
+                                                    padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 800, letterSpacing: 1,
+                                                    background: ROLE_COLORS[u.role]?.bg || "rgba(255,255,255,0.06)",
+                                                    color: ROLE_COLORS[u.role]?.text || "#e2e8f0",
+                                                    border: `1px solid ${ROLE_COLORS[u.role]?.border || "rgba(255,255,255,0.1)"}`,
+                                                }}>{u.role}</span>
+                                            </td>
+                                            <td style={{ ...td, fontFamily: "monospace", fontSize: 10 }}>20-03-2026</td>
+                                            <td style={td}>
+                                                <span style={{
+                                                    padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 700,
+                                                    background: "rgba(34,197,94,0.1)", color: "#86efac",
+                                                    border: "1px solid rgba(34,197,94,0.2)"
+                                                }}>Active</span>
+                                            </td>
+                                            <td style={td}>
+                                                <button style={{
+                                                    padding: "5px 14px", background: "rgba(124,77,255,0.12)",
+                                                    border: "1px solid rgba(124,77,255,0.25)", borderRadius: 8,
+                                                    color: "#a78bfa", fontSize: 10, fontWeight: 700, cursor: "pointer",
+                                                    transition: "all 0.2s"
+                                                }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(124,77,255,0.22)"; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(124,77,255,0.12)"; }}>
                                                     Edit
                                                 </button>
                                             </td>
                                         </tr>
                                     ))}
                                     {users.length === 0 && (
-                                        <tr><td colSpan="7" className="text-center py-8 text-slate-400 text-xs">No users found.</td></tr>
+                                        <tr><td colSpan="7" style={{
+                                            padding: "40px", textAlign: "center",
+                                            color: "rgba(148,163,184,0.3)", fontSize: 13
+                                        }}>No users found.</td></tr>
                                     )}
                                 </tbody>
                             </table>
@@ -178,59 +210,74 @@ export default function AdminPanel({ token }) {
                     </div>
                 )}
 
-                {/* Roles tab (mock) */}
+                {/* Roles */}
                 {tab === "roles" && (
-                    <div className="animate-fade-in p-8 text-center bg-slate-50">
-                        <p className="text-slate-500 text-sm">Role definitions are currently immutable and managed via configuration.</p>
+                    <div style={{ padding: 48, textAlign: "center" }}>
+                        <div style={{ fontSize: 40, opacity: 0.2, marginBottom: 14 }}>🛡️</div>
+                        <p style={{ color: "rgba(148,163,184,0.4)", fontSize: 13 }}>
+                            Role definitions are immutable and managed via configuration.
+                        </p>
                     </div>
                 )}
 
-                {/* Audit Log tab */}
+                {/* Audit */}
                 {tab === "audit" && (
-                    <div className="animate-fade-in flex flex-col h-full">
-                        <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded border border-indigo-100 uppercase tracking-widest">
-                                    🔒 Immutable Ledger
-                                </span>
-                            </div>
+                    <div>
+                        <div style={{
+                            padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.05)",
+                            display: "flex", alignItems: "center", gap: 12, background: "rgba(255,255,255,0.015)"
+                        }}>
+                            <span style={{
+                                padding: "4px 12px", borderRadius: 100,
+                                background: "rgba(124,77,255,0.1)", border: "1px solid rgba(124,77,255,0.2)",
+                                fontSize: 10, fontWeight: 800, letterSpacing: 1.5, color: "#a78bfa"
+                            }}>
+                                🔒 Immutable Ledger
+                            </span>
                         </div>
                         {loading ? (
-                            <div className="px-8 py-12 text-blue-400 text-sm font-bold text-center animate-pulse">Loading secure audit trail...</div>
+                            <div style={{ padding: "48px", textAlign: "center", color: "rgba(124,77,255,0.5)", fontSize: 13, fontWeight: 600 }}>
+                                Loading secure audit trail...
+                            </div>
                         ) : audit.length === 0 ? (
-                            <div className="px-8 py-12 text-slate-400 text-xs text-center">
-                                No audit entries yet. Perform some actions to populate the log.
+                            <div style={{ padding: "48px", textAlign: "center", color: "rgba(148,163,184,0.3)", fontSize: 13 }}>
+                                No audit entries yet.
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="premium-table">
+                            <div style={{ overflowX: "auto" }}>
+                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                                     <thead>
                                         <tr>
-                                            <th>ID</th>
-                                            <th>Event</th>
-                                            <th>User</th>
-                                            <th>Details</th>
-                                            <th>Timestamp</th>
+                                            {["ID", "Event", "User", "Details", "Timestamp"].map(h => (
+                                                <th key={h} style={theadTh}>{h}</th>
+                                            ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="text-xs">
-                                        {audit.map((log) => (
-                                            <tr key={log.id}>
-                                                <td className="text-slate-400 font-mono text-[10px]">#{String(log.id).padStart(4, '0')}</td>
-                                                <td>
-                                                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold ${log.event_type === "LOGIN" ? "bg-slate-100 text-slate-600" :
-                                                        log.event_type === "PREDICT" ? "bg-emerald-50 text-emerald-600" :
-                                                            log.event_type === "RETRAIN" ? "bg-purple-50 text-purple-600" :
-                                                                "bg-slate-50 text-slate-600"
-                                                        }`}>
-                                                        {log.event_type}
-                                                    </span>
+                                    <tbody>
+                                        {audit.map(log => (
+                                            <tr key={log.id}
+                                                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.02)"}
+                                                onMouseLeave={e => e.currentTarget.style.background = ""}>
+                                                <td style={{ ...td, fontFamily: "monospace", fontSize: 10, color: "rgba(148,163,184,0.3)" }}>
+                                                    #{String(log.id).padStart(4, "0")}
                                                 </td>
-                                                <td className="font-bold text-brand-dark">{log.username}</td>
-                                                <td className="text-slate-500 font-mono text-[10px]">
+                                                <td style={td}>
+                                                    <span style={{
+                                                        padding: "3px 10px", borderRadius: 100, fontSize: 9, fontWeight: 800, letterSpacing: 1.5,
+                                                        ...(EVENT_BADGE[log.event_type] || { bg: "rgba(148,163,184,0.1)", text: "rgba(148,163,184,0.7)", border: "rgba(148,163,184,0.1)" }),
+                                                        background: (EVENT_BADGE[log.event_type] || {}).bg,
+                                                        color: (EVENT_BADGE[log.event_type] || {}).text,
+                                                        border: `1px solid ${(EVENT_BADGE[log.event_type] || {}).border}`,
+                                                    }}>{log.event_type}</span>
+                                                </td>
+                                                <td style={{ ...td, fontWeight: 700, color: "#f1f5f9" }}>{log.username}</td>
+                                                <td style={{
+                                                    ...td, fontFamily: "monospace", fontSize: 10, maxWidth: 240,
+                                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+                                                }}>
                                                     {typeof log.details === "object" ? JSON.stringify(log.details) : log.details}
                                                 </td>
-                                                <td className="text-slate-500 font-medium">
+                                                <td style={{ ...td, fontSize: 11, whiteSpace: "nowrap" }}>
                                                     {new Date(log.created_at).toLocaleString("en-IN")}
                                                 </td>
                                             </tr>
@@ -242,97 +289,161 @@ export default function AdminPanel({ token }) {
                     </div>
                 )}
 
-                {/* Model Management Tab */}
+                {/* Model Settings */}
                 {tab === "model" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 animate-fade-in bg-slate-50">
-                        {/* Model Info Card */}
-                        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
-                            <h3 className="font-bold text-base text-brand-dark mb-1 flex items-center gap-2">🧠 Current ML Model</h3>
-                            <p className="text-xs text-slate-500 mb-6">Production serving model metadata and health.</p>
-
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Version</span>
-                                    <span className="text-xs font-black text-brand-blue font-mono">v{modelInfo?.version || "1.0.0"}</span>
-                                </div>
-                                <div className="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trained On</span>
-                                    <span className="text-xs font-bold text-brand-dark">{modelInfo?.trained_at || "Unknown"}</span>
-                                </div>
-                                {modelInfo?.accuracy && (
-                                    <div className="flex justify-between items-center bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">Baseline Accuracy</span>
-                                        <span className="text-xs font-black text-emerald-700">{(modelInfo.accuracy * 100).toFixed(1)}%</span>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, padding: 20 }}>
+                        {/* Model Info */}
+                        <div style={{
+                            background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
+                            borderRadius: 16, padding: 24
+                        }}>
+                            <div style={{ fontWeight: 700, fontSize: 15, color: "#f1f5f9", marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
+                                🧠 Current ML Model
+                            </div>
+                            <p style={{ fontSize: 11, color: "rgba(148,163,184,0.4)", marginBottom: 20 }}>Production serving model metadata.</p>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                {[
+                                    { label: "Version", val: `v${modelInfo?.version || "1.0.0"}`, color: "#a78bfa" },
+                                    { label: "Trained On", val: modelInfo?.trained_at || "Unknown", color: "#e2e8f0" },
+                                    modelInfo?.accuracy && { label: "Baseline Accuracy", val: `${(modelInfo.accuracy * 100).toFixed(1)}%`, color: "#86efac" },
+                                ].filter(Boolean).map(m => (
+                                    <div key={m.label} style={{
+                                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                                        background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)",
+                                        borderRadius: 10, padding: "10px 14px"
+                                    }}>
+                                        <span style={{
+                                            fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase",
+                                            color: "rgba(148,163,184,0.35)"
+                                        }}>{m.label}</span>
+                                        <span style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 800, color: m.color }}>{m.val}</span>
                                     </div>
-                                )}
+                                ))}
                             </div>
 
-                            {drift && drift.accuracy_7d && (
-                                <div className="mt-6 border-t border-slate-100 pt-5">
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Live Drift Monitor (7-Day Avg)</p>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden">
-                                            <div className={`h-full transition-all duration-1000 rounded-full ${drift.drift_detected ? 'bg-red-500' : 'bg-emerald-500'}`}
-                                                style={{ width: `${(drift.accuracy_7d * 100).toFixed(0)}%` }} />
+                            {drift?.accuracy_7d && (
+                                <div style={{ marginTop: 20, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                                    <div style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: 2, color: "rgba(148,163,184,0.35)",
+                                        textTransform: "uppercase", marginBottom: 12
+                                    }}>Live Drift Monitor (7-Day)</div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                        <div style={{ flex: 1, height: 6, borderRadius: 4, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                                            <div style={{
+                                                height: "100%", borderRadius: 4,
+                                                background: drift.drift_detected ? "#ef4444" : "#22c55e",
+                                                width: `${(drift.accuracy_7d * 100).toFixed(0)}%`, transition: "width 1s ease"
+                                            }} />
                                         </div>
-                                        <span className="text-xs font-black text-slate-700">{(drift.accuracy_7d * 100).toFixed(1)}%</span>
+                                        <span style={{
+                                            fontFamily: "monospace", fontSize: 12, fontWeight: 800,
+                                            color: drift.drift_detected ? "#fca5a5" : "#86efac"
+                                        }}>
+                                            {(drift.accuracy_7d * 100).toFixed(1)}%
+                                        </span>
                                     </div>
                                     {drift.drift_detected && (
-                                        <p className="text-[10px] font-bold text-red-500 mt-3 bg-red-50 p-2 rounded uppercase tracking-widest animate-pulse border border-red-100">⚠️ Model degradation detected. Retrain recommended.</p>
+                                        <div style={{
+                                            marginTop: 12, padding: "8px 14px", borderRadius: 10,
+                                            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                                            fontSize: 10, fontWeight: 700, color: "#fca5a5", letterSpacing: 1
+                                        }}>
+                                            ⚠️ Model degradation detected. Retrain recommended.
+                                        </div>
                                     )}
                                 </div>
                             )}
                         </div>
 
-                        {/* Retrain Action Card */}
-                        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-200">
-                            <h3 className="font-bold text-base text-brand-dark mb-1 flex items-center gap-2">🔁 Automated Retraining</h3>
-                            <p className="text-xs text-slate-500 mb-6">Trigger a pipeline to drop/rebuild the model.</p>
+                        {/* Retrain */}
+                        <div style={{
+                            background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)",
+                            borderRadius: 16, padding: 24
+                        }}>
+                            <div style={{ fontWeight: 700, fontSize: 15, color: "#f1f5f9", marginBottom: 4, display: "flex", gap: 8, alignItems: "center" }}>
+                                🔁 Automated Retraining
+                            </div>
+                            <p style={{ fontSize: 11, color: "rgba(148,163,184,0.4)", marginBottom: 20 }}>
+                                Trigger a pipeline to rebuild the model.
+                            </p>
 
-                            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6 relative overflow-hidden">
-                                <h4 className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-2">What happens?</h4>
-                                <ul className="text-[10px] text-blue-800 space-y-2 font-medium">
-                                    <li className="flex gap-2"><span>1.</span> Pulls latest 10k approved/rejected apps from PG</li>
-                                    <li className="flex gap-2"><span>2.</span> Fits new RandomForest with hyperparameter tuning</li>
-                                    <li className="flex gap-2"><span>3.</span> Validates F1/Accuracy meets baseline &gt; 80%</li>
-                                    <li className="flex gap-2"><span>4.</span> Hot-swaps model in memory without downtime</li>
+                            <div style={{
+                                background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.15)",
+                                borderRadius: 12, padding: 16, marginBottom: 20
+                            }}>
+                                <div style={{
+                                    fontSize: 9, fontWeight: 800, letterSpacing: 2, color: "#60a5fa",
+                                    textTransform: "uppercase", marginBottom: 10
+                                }}>Pipeline Steps</div>
+                                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {[
+                                        "Pulls latest 10k apps from Supabase",
+                                        "Fits new RandomForest with tuning",
+                                        "Validates F1/Accuracy ≥ 80%",
+                                        "Hot-swaps model without downtime",
+                                    ].map((s, i) => (
+                                        <li key={i} style={{ fontSize: 11, color: "rgba(96,165,250,0.8)", display: "flex", gap: 10, alignItems: "flex-start" }}>
+                                            <span style={{ color: "rgba(96,165,250,0.4)", fontWeight: 700, minWidth: 18 }}>{i + 1}.</span> {s}
+                                        </li>
+                                    ))}
                                 </ul>
                             </div>
 
-                            <button
-                                onClick={handleRetrain}
-                                disabled={retraining}
-                                className={`w-full py-3 rounded-lg text-xs transition-all uppercase tracking-widest font-bold flex items-center justify-center gap-2 ${retraining ? "bg-slate-200 text-slate-500 cursor-not-allowed" :
-                                    drift?.drift_detected ? "bg-red-500 text-white hover:bg-red-600 animate-pulse shadow-md" :
-                                        "bg-brand-dark text-white hover:bg-slate-800 shadow-sm"
-                                    }`}
-                            >
+                            <button onClick={handleRetrain} disabled={retraining} style={{
+                                width: "100%", padding: "14px", borderRadius: 12,
+                                border: "none", cursor: retraining ? "not-allowed" : "pointer",
+                                fontWeight: 700, fontSize: 12, letterSpacing: 1.5, textTransform: "uppercase",
+                                background: retraining ? "rgba(255,255,255,0.04)" :
+                                    drift?.drift_detected ? "linear-gradient(135deg,#ef4444,#dc2626)" : "linear-gradient(135deg,#7c4dff,#3b82f6)",
+                                color: retraining ? "rgba(148,163,184,0.3)" : "white",
+                                boxShadow: retraining ? "none" : drift?.drift_detected ? "0 8px 30px rgba(239,68,68,0.4)" : "0 8px 30px rgba(124,77,255,0.4)",
+                                transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                            }}>
                                 {retraining ? (
-                                    <><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> Running Pipeline...</>
+                                    <>
+                                        <span style={{
+                                            width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)",
+                                            borderTop: "2px solid white", borderRadius: "50%", display: "inline-block",
+                                            animation: "spin 1s linear infinite"
+                                        }} />
+                                        Running Pipeline...
+                                    </>
                                 ) : drift?.drift_detected ? "⚠️ Force Retrain Now" : "Commit Retrain Pipeline"}
                             </button>
 
                             {retrainError && (
-                                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-600 text-[10px] font-bold">
+                                <div style={{
+                                    marginTop: 14, padding: "12px 16px",
+                                    background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                                    borderRadius: 10, fontSize: 11, fontWeight: 700, color: "#fca5a5"
+                                }}>
                                     ❌ {retrainError}
                                 </div>
                             )}
 
                             {retrainResult && (
-                                <div className={`mt-4 rounded-lg border p-4 space-y-3 animate-slide-up ${retrainResult.success ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"}`}>
-                                    <p className={`font-bold text-[10px] uppercase tracking-widest ${retrainResult.success ? "text-emerald-700" : "text-red-600"}`}>
+                                <div style={{
+                                    marginTop: 14, padding: "16px", borderRadius: 12,
+                                    background: retrainResult.success ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+                                    border: `1px solid ${retrainResult.success ? "rgba(34,197,94,0.2)" : "rgba(239,68,68,0.2)"}`
+                                }}>
+                                    <div style={{
+                                        fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase",
+                                        color: retrainResult.success ? "#86efac" : "#fca5a5", marginBottom: 12
+                                    }}>
                                         {retrainResult.success ? "✅ Pipeline Completed" : "❌ Pipeline Failed"}
-                                    </p>
+                                    </div>
                                     {retrainResult.accuracy != null && (
-                                        <div className="flex gap-6">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">New Accuracy</p>
-                                                <p className="text-lg font-black text-emerald-600">{(retrainResult.accuracy * 100).toFixed(1)}%</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">New F1 Score</p>
-                                                <p className="text-lg font-black text-emerald-600">{(retrainResult.f1 * 100).toFixed(1)}%</p>
-                                            </div>
+                                        <div style={{ display: "flex", gap: 24 }}>
+                                            {[
+                                                { label: "New Accuracy", val: `${(retrainResult.accuracy * 100).toFixed(1)}%` },
+                                                { label: "New F1 Score", val: `${(retrainResult.f1 * 100).toFixed(1)}%` },
+                                            ].map(m => (
+                                                <div key={m.label}>
+                                                    <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 2, color: "rgba(148,163,184,0.35)", textTransform: "uppercase", marginBottom: 6 }}>{m.label}</div>
+                                                    <div style={{ fontSize: 22, fontWeight: 900, color: "#86efac", fontFamily: "'Space Grotesk',sans-serif" }}>{m.val}</div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>

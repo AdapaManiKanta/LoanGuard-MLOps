@@ -29,7 +29,6 @@ function BatchUpload({ token }) {
                 headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
                 responseType: "blob"
             });
-
             const text = await res.data.text();
             const lines = text.trim().split("\n");
             const headers = lines[0].split(",");
@@ -41,7 +40,6 @@ function BatchUpload({ token }) {
                 else if (cols[predIdx] === "Rejected") rejected++;
             }
             setSummary({ total: lines.length - 1, approved, rejected });
-
             const url = URL.createObjectURL(res.data);
             const a = document.createElement("a");
             a.href = url; a.download = "loan_predictions.csv"; a.click();
@@ -53,65 +51,153 @@ function BatchUpload({ token }) {
         }
     };
 
+    const cardStyle = {
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        borderRadius: 20,
+    };
+
     return (
-        <div className="animate-fade-in max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                <h2 className="text-2xl font-bold text-brand-dark">Batch Processing</h2>
+        <div style={{ maxWidth: 860, margin: "0 auto", display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Header */}
+            <div style={{ paddingBottom: 20, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <h2 style={{ fontSize: 22, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.5px", marginBottom: 4 }}>
+                    Batch Processing
+                </h2>
+                <p style={{ fontSize: 12, color: "rgba(148,163,184,0.4)" }}>
+                    Upload a CSV to process multiple applications simultaneously.
+                </p>
             </div>
-            <p className="text-slate-500 text-sm">Upload a CSV containing multiple applications to process them simultaneously. Outcomes will be downloaded automatically.</p>
 
             {/* Drop Zone */}
             <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
                 onDragLeave={() => setDragging(false)}
                 onDrop={onDrop}
                 onClick={() => fileRef.current.click()}
-                className={`premium-card p-12 text-center cursor-pointer transition-all border-2 border-dashed ${dragging ? "border-brand-blue bg-blue-50" : "border-slate-200 hover:border-brand-blue hover:bg-slate-50"}`}
-            >
-                <div className="text-5xl mb-3">📂</div>
+                style={{
+                    ...cardStyle,
+                    padding: "60px 40px", textAlign: "center", cursor: "pointer",
+                    border: dragging ? "2px dashed #7c4dff" : file ? "2px dashed rgba(34,197,94,0.4)" : "2px dashed rgba(255,255,255,0.08)",
+                    background: dragging ? "rgba(124,77,255,0.06)" : file ? "rgba(34,197,94,0.04)" : "rgba(255,255,255,0.02)",
+                    transition: "all 0.25s",
+                }}>
+                <div style={{
+                    fontSize: 52, marginBottom: 16, lineHeight: 1,
+                    filter: dragging ? "drop-shadow(0 0 20px rgba(124,77,255,0.7))" : "none",
+                    transition: "filter 0.25s"
+                }}>
+                    {file ? "✅" : "📂"}
+                </div>
                 {file ? (
-                    <p className="font-bold text-brand-blue">{file.name}</p>
+                    <div>
+                        <p style={{ fontWeight: 700, fontSize: 16, color: "#86efac", marginBottom: 6 }}>{file.name}</p>
+                        <p style={{ fontSize: 12, color: "rgba(148,163,184,0.4)" }}>
+                            {(file.size / 1024).toFixed(1)} KB · Click to change
+                        </p>
+                    </div>
                 ) : (
                     <>
-                        <p className="font-bold text-brand-dark">Drag & drop a CSV or click to browse</p>
-                        <p className="text-xs text-slate-400 mt-2">Required columns: Gender, Married, Dependents, Education, Self_Employed, ApplicantIncome, CoapplicantIncome, LoanAmount, Loan_Amount_Term, Credit_History, Property_Area</p>
+                        <p style={{ fontWeight: 700, fontSize: 16, color: "rgba(148,163,184,0.7)", marginBottom: 10 }}>
+                            Drag & drop a CSV or <span style={{ color: "#a78bfa" }}>click to browse</span>
+                        </p>
+                        <p style={{ fontSize: 11, color: "rgba(148,163,184,0.35)", lineHeight: 1.7, maxWidth: 500, margin: "0 auto" }}>
+                            Required columns: Gender, Married, Dependents, Education, Self_Employed,
+                            ApplicantIncome, CoapplicantIncome, LoanAmount, Loan_Amount_Term, Credit_History, Property_Area
+                        </p>
                     </>
                 )}
-                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={(e) => { setFile(e.target.files[0]); setSummary(null); }} />
+                <input ref={fileRef} type="file" accept=".csv" style={{ display: "none" }}
+                    onChange={e => { setFile(e.target.files[0]); setSummary(null); }} />
             </div>
 
-            {/* Summary */}
+            {/* Summary cards */}
             {summary && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-slide-up">
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16 }}>
                     {[
-                        { label: "Total Processed", val: summary.total, color: "text-brand-dark", bg: "bg-white", icon: "📊" },
-                        { label: "Approved", val: summary.approved, color: "text-emerald-600", bg: "bg-emerald-50", icon: "✅" },
-                        { label: "Rejected", val: summary.rejected, color: "text-red-600", bg: "bg-red-50", icon: "❌" }
-                    ].map((s) => (
-                        <div key={s.label} className={`premium-card p-5 ${s.bg}`}>
-                            <div className="flex justify-between items-start">
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{s.label}</p>
-                                <span className="text-lg opacity-80">{s.icon}</span>
+                        { label: "Total Processed", val: summary.total, icon: "📊", color: "#a78bfa", bg: "rgba(124,77,255,0.08)", border: "rgba(124,77,255,0.2)" },
+                        { label: "Approved", val: summary.approved, icon: "✅", color: "#86efac", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.2)" },
+                        { label: "Rejected", val: summary.rejected, icon: "❌", color: "#fca5a5", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" },
+                    ].map(s => (
+                        <div key={s.label} style={{
+                            background: s.bg, border: `1px solid ${s.border}`,
+                            borderRadius: 18, padding: "20px 24px",
+                        }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                                <span style={{
+                                    fontSize: 9, fontWeight: 800, letterSpacing: 2, textTransform: "uppercase",
+                                    color: "rgba(148,163,184,0.4)"
+                                }}>{s.label}</span>
+                                <span style={{ fontSize: 20 }}>{s.icon}</span>
                             </div>
-                            <p className={`text-3xl font-black mt-2 ${s.color}`}>{s.val}</p>
+                            <div style={{
+                                fontSize: 38, fontWeight: 900, color: s.color,
+                                fontFamily: "'Space Grotesk',sans-serif", lineHeight: 1
+                            }}>{s.val}</div>
                         </div>
                     ))}
                 </div>
             )}
 
-            <div className="flex justify-end mt-4">
-                <button
-                    onClick={handleSubmit}
-                    disabled={!file || loading}
-                    className="btn-primary py-3 px-8 text-sm uppercase tracking-widest font-bold disabled:opacity-50 min-w-[200px]"
-                >
+            {/* Submit Button */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={handleSubmit} disabled={!file || loading}
+                    style={{
+                        padding: "14px 36px",
+                        background: !file || loading ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg,#7c4dff,#3b82f6)",
+                        border: "none", borderRadius: 100, cursor: !file || loading ? "not-allowed" : "pointer",
+                        color: !file || loading ? "rgba(148,163,184,0.3)" : "white",
+                        fontWeight: 700, fontSize: 13, letterSpacing: 1.5, textTransform: "uppercase",
+                        minWidth: 200, transition: "all 0.2s",
+                        boxShadow: !file || loading ? "none" : "0 8px 30px rgba(124,77,255,0.4)",
+                    }}
+                    onMouseEnter={e => { if (!loading && file) e.currentTarget.style.transform = "translateY(-2px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = ""; }}>
                     {loading ? (
-                        <span className="flex items-center gap-2 justify-center">
-                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
+                        <span style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "center" }}>
+                            <span style={{
+                                width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)",
+                                borderTop: "2px solid white", borderRadius: "50%",
+                                display: "inline-block", animation: "spin 1s linear infinite"
+                            }} />
                             Processing...
                         </span>
-                    ) : "Process Data"}
+                    ) : "⚡ Process Data"}
                 </button>
+            </div>
+
+            {/* Format guide */}
+            <div style={{
+                background: "rgba(124,77,255,0.06)", border: "1px solid rgba(124,77,255,0.15)",
+                borderRadius: 16, padding: 20
+            }}>
+                <div style={{
+                    fontSize: 9, fontWeight: 800, letterSpacing: 2, color: "rgba(124,77,255,0.6)",
+                    textTransform: "uppercase", marginBottom: 12
+                }}>📋 CSV Format Guide</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                    {[
+                        "Gender — Male/Female",
+                        "Married — Yes/No",
+                        "Dependents — 0/1/2/3+",
+                        "Education — Graduate/Not Graduate",
+                        "Self_Employed — Yes/No",
+                        "ApplicantIncome — numeric",
+                        "CoapplicantIncome — numeric",
+                        "LoanAmount — numeric (₹)",
+                        "Loan_Amount_Term — months",
+                        "Credit_History — 0 or 1",
+                        "Property_Area — Urban/Rural/Semiurban",
+                    ].map(f => (
+                        <div key={f} style={{
+                            fontSize: 10, color: "rgba(148,163,184,0.45)",
+                            padding: "4px 10px", background: "rgba(255,255,255,0.02)",
+                            borderRadius: 8, border: "1px solid rgba(255,255,255,0.04)"
+                        }}>
+                            {f}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );
